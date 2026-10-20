@@ -1,5 +1,8 @@
 apply plugin: 'com.android.application'
 
+// No GitHub Actions cada build ganha um número maior, para instalar por cima da versão anterior
+def buildNumber = Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")
+
 android {
     namespace = "com.jarvis.pessoal"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,9 +10,8 @@ android {
         applicationId "com.jarvis.pessoal"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        // No GitHub Actions cada build ganha um número maior, para instalar por cima da versão anterior
-        versionCode (System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger()
-        versionName "1.0.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
+        versionCode buildNumber
+        versionName "1.0.${buildNumber}"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
