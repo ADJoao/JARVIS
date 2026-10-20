@@ -1,0 +1,65 @@
+name: Gerar APK do JARVIS
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Compilar o app web
+        run: npm run build
+
+      - name: Copiar para o projeto Android
+        run: npx cap sync android
+
+      - name: Gerar APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace
+
+      - name: Renomear APK
+        run: cp android/app/build/outputs/apk/release/app-release.apk JARVIS.apk
+
+      - name: Guardar APK nos artefatos
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-apk
+          path: JARVIS.apk
+
+      - name: Publicar APK em "Releases" (link fácil para baixar no celular)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: jarvis-${{ github.run_number }}
+          name: JARVIS v1.0.${{ github.run_number }}
+          target_commitish: ${{ github.sha }}
+          make_latest: true
+          body: |
+            APK do JARVIS gerado automaticamente a partir do commit ${{ github.sha }}.
+            Baixe o arquivo **JARVIS.apk** abaixo pelo celular e toque nele para instalar.
+          files: JARVIS.apk
