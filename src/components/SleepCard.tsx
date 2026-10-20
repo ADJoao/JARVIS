@@ -1,6 +1,7 @@
 import { store, useData } from '../lib/storage';
 import { evaluateSleep, fmtHours, hoursOf, lastSleep } from '../lib/sleep';
 import { fmtTime } from '../lib/date';
+import { notify } from './Dialog';
 
 interface Props {
   now: number;
@@ -33,7 +34,7 @@ export function SleepCard({ now, onOpen }: Props) {
             onClick={() => {
               const e = store.addSleep(since, Date.now());
               if (!e) {
-                alert('Não deu para registrar: esse horário já tem sono registrado ou passou de 20 horas. Ajuste em "Ver semana".');
+                notify('Não deu para registrar: esse horário já tem sono registrado ou passou de 20 horas. Ajuste em "Ver semana".');
                 store.cancelSleep();
               }
               onOpen(e?.id);

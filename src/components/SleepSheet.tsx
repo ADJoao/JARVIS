@@ -4,6 +4,7 @@ import { evaluateSleep, fmtHours, hoursOf, sleepTips, sleepWeek } from '../lib/s
 import { addDays, dayKey, fmtDayMonth, fmtTime, fromKey, startOfDay, WEEKDAYS_LONG, WEEKDAYS_SHORT } from '../lib/date';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
+import { askConfirm } from './Dialog';
 
 export const QUALITY = ['😫', '😕', '😐', '🙂', '🤩'];
 const QUALITY_LABEL = ['Péssimo', 'Ruim', 'Normal', 'Bem', 'Ótimo'];
@@ -222,7 +223,7 @@ export function SleepSheet({ onClose, rateId }: Props) {
                   </span>
                 </div>
                 <span className={`badge small-badge tone-${v.tone}`}>{v.emoji}</span>
-                <button className="icon-btn" aria-label="Apagar noite" onClick={() => confirm('Apagar esse registro de sono?') && store.removeSleep(e.id)}>
+                <button className="icon-btn" aria-label="Apagar noite" onClick={async () => (await askConfirm('Apagar esse registro de sono?', { confirmLabel: 'Apagar', danger: true })) && store.removeSleep(e.id)}>
                   <Icon name="trash" size={16} />
                 </button>
               </div>

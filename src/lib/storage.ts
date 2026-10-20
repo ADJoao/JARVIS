@@ -63,7 +63,11 @@ class Store {
 
   update(fn: (d: UserData) => UserData) {
     this.data = fn(this.data);
-    if (this.userId) localStorage.setItem(dataKey(this.userId), JSON.stringify(this.data));
+    try {
+      if (this.userId) localStorage.setItem(dataKey(this.userId), JSON.stringify(this.data));
+    } catch (e) {
+      console.warn('Não foi possível salvar os dados', e);
+    }
     this.emit();
   }
 

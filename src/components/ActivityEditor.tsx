@@ -5,6 +5,7 @@ import { dayKey, WEEKDAYS_SHORT } from '../lib/date';
 import { store, uid } from '../lib/storage';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
+import { askConfirm } from './Dialog';
 
 interface Props {
   activity?: Activity;
@@ -270,8 +271,8 @@ export function ActivityEditor({ activity, onClose }: Props) {
           )}
           <button
             className="btn danger"
-            onClick={() => {
-              if (confirm(`Excluir "${activity.name}" e todo o histórico dela?`)) {
+            onClick={async () => {
+              if (await askConfirm(`Excluir "${activity.name}" e todo o histórico dela?`, { confirmLabel: 'Excluir', danger: true })) {
                 store.deleteActivity(activity.id);
                 onClose();
               }

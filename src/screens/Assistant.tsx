@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { store, uid, useData } from '../lib/storage';
 import { localAnswer } from '../lib/assistant';
 import { Icon } from '../components/Icon';
+import { askConfirm } from '../components/Dialog';
 import type { ChatMsg } from '../lib/types';
 
 const QUICK = [
@@ -89,7 +90,7 @@ export function Assistant({ onSettings }: { onSettings: () => void }) {
             <button
               className="icon-btn glass"
               aria-label="Limpar conversa"
-              onClick={() => confirm('Apagar a conversa?') && store.update((d) => ({ ...d, chat: [] }))}
+              onClick={async () => (await askConfirm('Apagar a conversa?', { confirmLabel: 'Apagar', danger: true })) && store.update((d) => ({ ...d, chat: [] }))}
             >
               <Icon name="trash" size={18} />
             </button>

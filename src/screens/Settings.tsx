@@ -5,6 +5,7 @@ import { changePassword, deleteAccount } from '../lib/auth';
 import { ensurePermission, isNative } from '../lib/notify';
 import { Sheet } from '../components/Sheet';
 import { Icon } from '../components/Icon';
+import { askConfirm } from '../components/Dialog';
 import { fmtHours } from '../lib/sleep';
 import type { UserAccount } from '../lib/types';
 
@@ -219,7 +220,7 @@ export function Settings({ user, onClose, onLogout }: Props) {
           const f = e.target.files?.[0];
           if (!f) return;
           try {
-            if (!confirm('Importar vai substituir os dados atuais desta conta. Continuar?')) return;
+            if (!(await askConfirm('Importar vai substituir os dados atuais desta conta. Continuar?', { confirmLabel: 'Importar' }))) return;
             store.importJson(await f.text());
             flash('Backup importado ✓');
           } catch (err) {
@@ -256,8 +257,8 @@ export function Settings({ user, onClose, onLogout }: Props) {
       </button>
       <button
         className="btn danger block"
-        onClick={() => {
-          if (confirm('Excluir sua conta e TODOS os dados deste aparelho? Isso não pode ser desfeito.')) {
+        onClick={async () => {
+          if (await askConfirm('Excluir sua conta e TODOS os dados deste aparelho? Isso não pode ser desfeito.', { confirmLabel: 'Excluir conta', danger: true })) {
             deleteAccount(user.id);
             onLogout();
           }

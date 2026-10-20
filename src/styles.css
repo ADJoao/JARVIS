@@ -662,6 +662,40 @@ h2 {
   padding: 2px 20px 6px;
 }
 
+/* ---------- caixa de confirmação ---------- */
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(3, 4, 12, 0.6);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: fadeBg 0.2s ease;
+}
+.dialog {
+  width: min(360px, 100%);
+  background: linear-gradient(160deg, rgba(40, 44, 82, 0.98), rgba(16, 18, 38, 0.98));
+  padding: 20px;
+  display: grid;
+  gap: 18px;
+  animation: up 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.dialog p {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.dialog-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.dialog-actions.single {
+  grid-template-columns: 1fr;
+}
+
 /* ---------- formulários ---------- */
 .input {
   width: 100%;
