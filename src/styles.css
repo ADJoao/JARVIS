@@ -1632,6 +1632,312 @@ textarea.input {
   gap: 2px;
 }
 
+/* ---------- finanças (painel estilo gateway) ---------- */
+:root {
+  --money: #5ef2a5;
+  --money-deep: #1fbf75;
+}
+.balance-card {
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+  overflow: hidden;
+}
+.balance-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 120% at 100% 0%, rgba(94, 242, 165, 0.22), transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.balance-card > * {
+  position: relative;
+}
+.balance-card .small {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.balance-value {
+  font-size: 36px;
+  font-weight: 850;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.flow-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.flow {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.flow .muted {
+  font-weight: 500;
+}
+.flow.in {
+  color: var(--money);
+}
+.flow.out {
+  color: #ff9aaa;
+}
+.money-actions {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.money-actions .btn {
+  padding: 11px 8px;
+  font-size: 14px;
+}
+.btn.money-in {
+  background: linear-gradient(135deg, var(--money), var(--money-deep));
+  color: #06281a;
+  border: 0;
+  box-shadow: 0 8px 22px rgba(94, 242, 165, 0.3);
+}
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.kpi {
+  padding: 12px;
+  border-radius: 16px;
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+.kpi strong {
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.goal-card {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.goal-card strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.goal-meter {
+  height: 12px;
+  border-radius: 12px;
+  background: var(--track);
+  overflow: hidden;
+}
+.goal-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 12px;
+  background: linear-gradient(90deg, var(--money-deep), var(--money));
+  box-shadow: 0 0 14px rgba(94, 242, 165, 0.5);
+  transition: width 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.goal-text {
+  font-size: 17px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.empty-goal {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+.segmented.mini button {
+  padding: 6px 10px;
+  font-size: 12.5px;
+}
+.money-bars .bar {
+  background: color-mix(in srgb, var(--money) 65%, transparent);
+}
+.money-bars .bar-col.on .bar {
+  background: var(--money);
+  box-shadow: 0 0 16px rgba(94, 242, 165, 0.55);
+}
+.money-bars.dense {
+  grid-template-columns: repeat(30, 1fr);
+}
+.money-bars.dense .bar {
+  width: 6px;
+}
+.bar-labels.dense {
+  grid-template-columns: repeat(30, 1fr);
+}
+.tx-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tx-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.tx-icon.in {
+  color: var(--money);
+  background: rgba(94, 242, 165, 0.12);
+}
+.tx-icon.out {
+  color: #ff9aaa;
+  background: rgba(255, 107, 129, 0.12);
+}
+.tx-icon.adjust {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+.tx-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.tx-main .small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tx-value {
+  font-weight: 750;
+  font-size: 14.5px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.tx-value.pos {
+  color: var(--money);
+}
+.tx-value.neg {
+  color: #ff9aaa;
+}
+.money-input {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+}
+.money-input:focus-within {
+  border-color: var(--money);
+}
+.money-input > span {
+  font-weight: 700;
+  color: var(--muted);
+  font-size: 20px;
+}
+.money-input input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 34px;
+  font-weight: 800;
+  color: var(--text);
+  background: none;
+  border: 0;
+  outline: none;
+  font-variant-numeric: tabular-nums;
+}
+.money-input.out input {
+  color: #ffb3bf;
+}
+.money-input.small {
+  padding: 8px 14px;
+}
+.money-input.small input {
+  font-size: 18px;
+  font-weight: 700;
+}
+.money-input.small > span {
+  font-size: 15px;
+}
+.celebrate {
+  justify-items: center;
+  text-align: center;
+  gap: 8px;
+  width: min(380px, 100%);
+}
+.celebrate-burst {
+  font-size: 54px;
+  animation: pop 0.6s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+@keyframes pop {
+  from {
+    transform: scale(0.3) rotate(-20deg);
+    opacity: 0;
+  }
+}
+.celebrate-value {
+  font-size: 38px;
+  font-weight: 850;
+  color: var(--money);
+  letter-spacing: -0.02em;
+  text-shadow: 0 0 24px rgba(94, 242, 165, 0.45);
+  font-variant-numeric: tabular-nums;
+}
+.celebrate-phrase {
+  font-size: 17px !important;
+  font-weight: 650;
+  margin: 6px 0;
+}
+.celebrate .goal-meter {
+  width: 100%;
+}
+.phrase-list {
+  display: grid;
+  gap: 8px;
+}
+.phrase-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.align-end {
+  align-self: end;
+}
+.money-mini {
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  text-align: left;
+}
+.money-mini-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+}
+.money-mini-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+.money-mini-top strong {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.money-mini .goal-meter {
+  height: 7px;
+}
+
 /* ---------- vários horários ---------- */
 .times-list {
   display: grid;

@@ -11,6 +11,7 @@ import { Today } from './screens/Today';
 import { CalendarScreen } from './screens/CalendarScreen';
 import { Activities } from './screens/Activities';
 import { Report } from './screens/Report';
+import { Finance } from './screens/Finance';
 import { Assistant } from './screens/Assistant';
 import { Settings } from './screens/Settings';
 import { ActivityEditor } from './components/ActivityEditor';
@@ -18,13 +19,13 @@ import { SleepSheet } from './components/SleepSheet';
 import { LogSheet } from './components/LogSheet';
 import { Icon } from './components/Icon';
 
-type Tab = 'today' | 'calendar' | 'routines' | 'report' | 'assistant';
+type Tab = 'today' | 'calendar' | 'routines' | 'report' | 'assistant' | 'finance';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'today', label: 'Hoje', icon: 'home' },
-  { id: 'calendar', label: 'Agenda', icon: 'calendar' },
-  { id: 'assistant', label: 'JARVIS', icon: 'chat' },
   { id: 'routines', label: 'Rotinas', icon: 'list' },
+  { id: 'assistant', label: 'JARVIS', icon: 'chat' },
+  { id: 'finance', label: 'Finanças', icon: 'wallet' },
   { id: 'report', label: 'Relatório', icon: 'chart' },
 ];
 
@@ -97,16 +98,17 @@ export default function App() {
   return (
     <div className="app">
       <main key={tab} className="fade-in">
-        {tab === 'today' && <Today userName={user.name} onEdit={onEdit} onSettings={openSettings} onSleep={(rateId) => setSleepOpen({ rateId })} onLogs={setLogsFor} />}
-        {tab === 'calendar' && <CalendarScreen onEdit={onEdit} />}
+        {tab === 'today' && <Today userName={user.name} onEdit={onEdit} onSettings={openSettings} onSleep={(rateId) => setSleepOpen({ rateId })} onLogs={setLogsFor} onCalendar={() => setTab('calendar')} onFinance={() => setTab('finance')} />}
+        {tab === 'calendar' && <CalendarScreen onEdit={onEdit} onBack={() => setTab('today')} />}
         {tab === 'routines' && <Activities onEdit={onEdit} />}
         {tab === 'report' && <Report />}
+        {tab === 'finance' && <Finance />}
         {tab === 'assistant' && <Assistant onSettings={openSettings} />}
       </main>
 
       <nav className="tabbar glass-strong">
         {TABS.map((t) => (
-          <button key={t.id} className={`tab ${tab === t.id ? 'on' : ''} ${t.id === 'assistant' ? 'center' : ''}`} onClick={() => setTab(t.id)}>
+          <button key={t.id} className={`tab ${tab === t.id || (t.id === 'today' && tab === 'calendar') ? 'on' : ''} ${t.id === 'assistant' ? 'center' : ''}`} onClick={() => setTab(t.id)}>
             {t.id === 'assistant' ? (
               <span className="tab-orb">
                 <Icon name="sparkles" size={22} />

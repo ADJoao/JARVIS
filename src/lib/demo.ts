@@ -1,4 +1,5 @@
-import type { Activity, LogEntry, SleepEntry, UserAccount, UserData } from './types';
+import type { Activity, LogEntry, MoneyTx, SleepEntry, UserAccount, UserData } from './types';
+import { DEFAULT_FINANCE } from './finance';
 import { listUsers, login, register } from './auth';
 import { DEFAULT_SETTINGS } from './storage';
 
@@ -49,11 +50,24 @@ function demoData(): UserData {
     const hours = 5.5 + r(8) * 3.5;
     if (end < now) sleep.push({ id: `s${i}`, start: end - hours * 3600_000, end, quality: 1 + Math.round(r(10) * 4) });
   }
+  // finanças de exemplo: saldo inicial + entradas nos últimos 30 dias
+  const txs: MoneyTx[] = [{ id: 'f0', type: 'adjust', amount: 120000, note: 'Saldo ajustado', at: now - 31 * day }];
+  const notes = ['Venda produto', 'Serviço freelance', 'Venda online', 'Pix cliente', 'Comissão'];
+  for (let i = 30; i >= 0; i--) {
+    const r = (k: number) => rand(i * 31 + k);
+    const sales = r(1) < 0.25 ? 0 : 1 + Math.floor(r(2) * 3);
+    for (let k = 0; k < sales; k++) {
+      const at = today.getTime() - i * day + (9 + r(3 + k) * 11) * 3600_000;
+      if (at < now) txs.push({ id: `f${i}-${k}`, type: 'in', amount: Math.round((50 + r(4 + k) * 450) * 100), note: notes[Math.floor(r(9 + k) * notes.length)], at });
+    }
+    if (r(7) < 0.15) txs.push({ id: `o${i}`, type: 'out', amount: Math.round((80 + r(8) * 300) * 100), note: 'Gasto', at: today.getTime() - i * day + 15 * 3600_000 });
+  }
   return {
     version: 1,
     activities,
     logs,
     sleep,
+    finance: { ...DEFAULT_FINANCE(), txs, goal: 2000000, goalName: 'Meta do mês' },
     chat: [],
     settings: { ...DEFAULT_SETTINGS, bedtimeReminder: true },
   };

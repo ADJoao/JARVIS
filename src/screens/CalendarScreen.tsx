@@ -6,7 +6,7 @@ import { Icon } from '../components/Icon';
 import { ActivityCard } from '../components/ActivityCard';
 import type { Activity } from '../lib/types';
 
-export function CalendarScreen({ onEdit }: { onEdit: (a?: Activity) => void }) {
+export function CalendarScreen({ onEdit, onBack }: { onEdit: (a?: Activity) => void; onBack: () => void }) {
   const data = useData();
   const [month, setMonth] = useState(() => {
     const d = new Date();
@@ -33,7 +33,12 @@ export function CalendarScreen({ onEdit }: { onEdit: (a?: Activity) => void }) {
   return (
     <div className="screen">
       <header className="top">
-        <h1>Agenda</h1>
+        <div className="row">
+          <button className="icon-btn glass" onClick={onBack} aria-label="Voltar para Hoje">
+            <Icon name="left" />
+          </button>
+          <h1>Agenda</h1>
+        </div>
       </header>
 
       <section className="glass calendar">

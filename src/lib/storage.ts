@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { Activity, LogEntry, Settings, SleepEntry, UserData } from './types';
+import type { Activity, Finance, LogEntry, MoneyTx, Settings, SleepEntry, UserData } from './types';
+import { DEFAULT_FINANCE, balance } from './finance';
 
 export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -22,6 +23,7 @@ const emptyData = (): UserData => ({
   logs: [],
   chat: [],
   sleep: [],
+  finance: DEFAULT_FINANCE(),
   settings: { ...DEFAULT_SETTINGS },
 });
 
@@ -41,7 +43,12 @@ class Store {
     try {
       const raw = localStorage.getItem(dataKey(userId));
       const parsed = raw ? (JSON.parse(raw) as UserData) : emptyData();
-      this.data = { ...emptyData(), ...parsed, settings: { ...DEFAULT_SETTINGS, ...parsed.settings } };
+      this.data = {
+        ...emptyData(),
+        ...parsed,
+        finance: { ...DEFAULT_FINANCE(), ...parsed.finance },
+        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+      };
     } catch {
       this.data = emptyData();
     }
@@ -148,6 +155,27 @@ class Store {
     this.update((d) => ({ ...d, sleep: d.sleep.filter((s) => s.id !== id) }));
   }
 
+  // ---- finanças ----
+  addTx(type: MoneyTx['type'], amount: number, note?: string, at = Date.now()): MoneyTx {
+    const tx = { id: uid(), type, amount, note: note?.trim() || undefined, at };
+    this.update((d) => ({ ...d, finance: { ...d.finance, txs: [...d.finance.txs, tx] } }));
+    return tx;
+  }
+
+  /** Corrige o saldo para um valor exato (gera uma "correção" que não conta como faturamento). */
+  setBalance(cents: number) {
+    const diff = cents - balance(this.data.finance);
+    if (diff) this.addTx('adjust', diff, 'Saldo ajustado');
+  }
+
+  removeTx(id: string) {
+    this.update((d) => ({ ...d, finance: { ...d.finance, txs: d.finance.txs.filter((t) => t.id !== id) } }));
+  }
+
+  setFinance(patch: Partial<Finance>) {
+    this.update((d) => ({ ...d, finance: { ...d.finance, ...patch } }));
+  }
+
   setSettings(patch: Partial<Settings>) {
     this.update((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
   }
@@ -163,6 +191,7 @@ class Store {
     this.update(() => ({
       ...emptyData(),
       ...parsed,
+      finance: { ...DEFAULT_FINANCE(), ...parsed.finance },
       settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
     }));
   }

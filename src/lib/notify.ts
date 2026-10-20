@@ -1,6 +1,7 @@
 import { Capacitor } from '@capacitor/core';
 import { LocalNotifications, type LocalNotificationSchema } from '@capacitor/local-notifications';
-import type { UserData } from './types';
+import type { MoneyTx, UserData } from './types';
+import { money, progressText, randomPhrase } from './finance';
 import { lastLog } from './stats';
 import { timesOf } from './times';
 
@@ -53,6 +54,31 @@ export async function rescheduleAll(data: UserData): Promise<void> {
       });
     }
 
+    // frases motivacionais (semanal ou diária). Agendamos as próximas ocorrências uma a uma
+    // para cada aviso trazer uma frase diferente; o app reagenda sempre que é aberto.
+    const f = data.finance;
+    if (f.motivationFreq !== 'off' && f.phrases.some((p) => p.trim())) {
+      const [hour, minute] = f.motivationTime.split(':').map(Number);
+      const prog = progressText(f);
+      const shuffled = [...f.phrases.filter((p) => p.trim())].sort(() => Math.random() - 0.5);
+      const dates: Date[] = [];
+      const d = new Date();
+      d.setHours(hour, minute, 0, 0);
+      if (d.getTime() <= now) d.setDate(d.getDate() + 1);
+      while (dates.length < (f.motivationFreq === 'daily' ? 14 : 8)) {
+        if (f.motivationFreq === 'daily' || d.getDay() === f.motivationWeekday) dates.push(new Date(d));
+        d.setDate(d.getDate() + 1);
+      }
+      dates.forEach((at, i) =>
+        list.push({
+          id: numId('__motivacao__', i),
+          title: discreet ? DISCREET_TITLE : '🔥 JARVIS',
+          body: discreet ? DISCREET_BODY : `${shuffled[i % shuffled.length]}${prog ? `\n🎯 ${prog}` : ''}`,
+          schedule: { at, allowWhileIdle: true },
+        }),
+      );
+    }
+
     for (const a of data.activities) {
       if (a.archivedAt) continue;
       const times = timesOf(a);
@@ -94,8 +120,31 @@ export async function rescheduleAll(data: UserData): Promise<void> {
           });
       }
     }
+    // no Android, largeBody mostra o texto inteiro (com quebras de linha) ao expandir a notificação
+    for (const n of list) n.largeBody ??= n.body;
     if (list.length) await LocalNotifications.schedule({ notifications: list });
   } catch (e) {
     console.warn('Falha ao agendar lembretes', e);
+  }
+}
+
+/** Notificação na hora em que uma entrada é registrada, no estilo "venda aprovada". */
+export async function notifyIncome(data: UserData, tx: MoneyTx): Promise<void> {
+  const f = data.finance;
+  if (!isNative() || !data.settings.notifications || !f.notifyOnIncome) return;
+  try {
+    if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
+    const discreet = data.settings.discreet;
+    const prog = progressText(f);
+    const note: LocalNotificationSchema = {
+      id: numId(tx.id, 99),
+      title: discreet ? 'JARVIS' : f.incomeTitle || '💸 Venda aprovada!',
+      body: discreet ? 'Nova entrada registrada.' : `Valor: ${money(tx.amount)}${tx.note ? ` · ${tx.note}` : ''}\n${randomPhrase(f)}${prog ? `\n🎯 ${prog}` : ''}`,
+      schedule: { at: new Date(Date.now() + 1500), allowWhileIdle: true },
+    };
+    note.largeBody = note.body;
+    await LocalNotifications.schedule({ notifications: [note] });
+  } catch (e) {
+    console.warn('Falha ao notificar entrada', e);
   }
 }

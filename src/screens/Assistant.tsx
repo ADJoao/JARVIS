@@ -11,6 +11,8 @@ const QUICK = [
   'Como está meu desempenho?',
   'O que devo melhorar?',
   'Como está meu sono?',
+  'Quanto eu tenho?',
+  'Me motiva!',
   'Quanto tempo sem ir ao banheiro?',
   'O que tenho amanhã?',
 ];

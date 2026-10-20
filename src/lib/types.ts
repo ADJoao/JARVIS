@@ -43,6 +43,40 @@ export interface SleepEntry {
   quality?: number;
 }
 
+/** Movimentação de dinheiro. Valores em centavos (inteiros) para não ter erro de arredondamento. */
+export interface MoneyTx {
+  id: string;
+  /** in = entrada, out = saída, adjust = correção de saldo (não conta como faturamento). */
+  type: 'in' | 'out' | 'adjust';
+  amount: number;
+  note?: string;
+  at: number;
+}
+
+export interface Finance {
+  txs: MoneyTx[];
+  /** Meta em centavos (0 = sem meta). */
+  goal: number;
+  goalName: string;
+  /** Prazo opcional da meta (AAAA-MM-DD). */
+  goalDeadline?: string;
+  /** A meta conta o saldo atual ou o total que entrou desde `goalSince`. */
+  goalBasis: 'balance' | 'income';
+  goalSince: number;
+  /** Como mostrar o progresso da meta. */
+  display: 'percent' | 'money' | 'both';
+  hideValues: boolean;
+  /** Frases motivacionais (sorteadas nas notificações). */
+  phrases: string[];
+  motivationFreq: 'off' | 'daily' | 'weekly';
+  /** 0 = domingo ... 6 = sábado */
+  motivationWeekday: number;
+  motivationTime: string;
+  notifyOnIncome: boolean;
+  /** Título da notificação de entrada (ex.: "💸 Venda aprovada!"). */
+  incomeTitle: string;
+}
+
 export interface ChatMsg {
   id: string;
   role: 'user' | 'assistant';
@@ -76,6 +110,7 @@ export interface UserData {
   sleep: SleepEntry[];
   /** Se está dormindo agora: desde quando ("Vou dormir" foi tocado). */
   sleepingSince?: number;
+  finance: Finance;
   settings: Settings;
 }
 

@@ -3,6 +3,8 @@ import { store } from './storage';
 import { addDays, fmtDuration, fmtTime, greeting, startOfDay, WEEKDAYS_LONG } from './date';
 import { dayStats, grade, indexLogs, lastLog, streak, suggestions, weekStats } from './stats';
 import { scheduleLabel } from './catalog';
+import { balance, financeSummary, goalProgress, money, parseMoney, progressText, randomPhrase } from './finance';
+import { notifyIncome } from './notify';
 import { nextTimeFor, timesLabel, timesOf } from './times';
 import { evaluateSleep, fmtHours, hoursOf, lastSleep, sleepSummaryText, sleepTips, sleepWeek } from './sleep';
 
@@ -117,13 +119,46 @@ const HELP = `Posso te ajudar com coisas como:
 • "Bebi água" / "Fui ao banheiro" (eu registro pra você)
 • "O que tenho amanhã?"
 • "Quanto eu dormi?" / "Como está meu sono?"
-• "Vou dormir" / "Acordei"`;
+• "Vou dormir" / "Acordei"
+• "Recebi 500 do cliente" / "Gastei 80 no mercado"
+• "Quanto eu tenho?" / "Como está minha meta?"`;
 
 /** Assistente local: funciona offline e de graça, entendendo perguntas comuns. */
 export function localAnswer(text: string): { text: string; understood: boolean; action?: boolean } {
   const data = store.get();
   const t = norm(text);
   const act = matchActivity(data, text);
+
+  // ---- dinheiro ----
+  const moneyVerb = /(recebi|entrou|ganhei|vendi|faturei|caiu|gastei|paguei|saiu|comprei)/.exec(t);
+  if (moneyVerb) {
+    // escolhe o valor: o que vem com "R$" ou "reais"; senão, o maior número da frase
+    const nums = [...text.matchAll(/(r\$\s*)?(\d[\d.,]*)(\s*(?:reais|real|conto|pila))?/gi)].map((m) => ({
+      cents: parseMoney(m[2]),
+      marked: Boolean(m[1] || m[3]),
+      end: (m.index ?? 0) + m[0].length,
+    }));
+    const valid = nums.filter((n) => Number.isFinite(n.cents) && n.cents > 0);
+    const pick = valid.find((n) => n.marked) ?? valid.sort((a, b) => b.cents - a.cents)[0];
+    if (pick) {
+      const cents = pick.cents;
+      const isOut = /(gastei|paguei|saiu|comprei)/.test(moneyVerb[1]);
+      const rest = text.slice(pick.end).replace(/^\s*(de|do|da|com|no|na|em|pelo|pela)?\s*/i, '').trim();
+      const note = rest ? rest.slice(0, 40) : undefined;
+      const tx = store.addTx(isOut ? 'out' : 'in', cents, note);
+      const f = store.get().finance;
+      if (isOut) return { text: `Saída registrada: **− ${money(cents)}**${note ? ` (${note})` : ''}.\nSaldo agora: **${money(balance(f))}**.`, understood: true, action: true };
+      notifyIncome(store.get(), tx);
+      const p = goalProgress(f);
+      return {
+        text: `${f.incomeTitle || '💸 Venda aprovada!'}\n**+ ${money(cents)}**${note ? ` · ${note}` : ''}\n\n${randomPhrase(f)}${p ? `\n\n🎯 ${progressText(f, p)}${p.missing ? ` — faltam ${money(p.missing)}` : ''}` : ''}`,
+        understood: true,
+        action: true,
+      };
+    }
+  }
+  if (has(t, /(saldo|quanto (eu )?tenho|dinheiro|faturamento|faturei|grana|minha meta|da meta|financ)/)) return { text: financeSummary(data), understood: true };
+  if (has(t, /(motiva|frase|animo|desanimad)/)) return { text: `${randomPhrase(data.finance)} 🔥`, understood: true };
 
   // ---- sono ----
   if (has(t, /^(vou|indo) (dormir|deitar)|boa noite,? (vou|to indo)/)) {
@@ -233,6 +268,15 @@ export function contextForAi(data: UserData): string {
       },
       semana_passada: { concluidas: prev.completed, planejadas: prev.planned, aproveitamento: pct(prev.score) },
       sequencia_dias_bons: streak(data, idx),
+      financas: (() => {
+        const f = data.finance;
+        const p = goalProgress(f);
+        return {
+          saldo: money(balance(f)),
+          meta: p ? { nome: f.goalName, valor: money(p.goal), atual: money(p.current), progresso: progressText(f, p), faltam: money(p.missing), prazo: f.goalDeadline ?? null, por_dia_ate_prazo: p.perDay ? money(p.perDay) : null } : null,
+          ultimas_movimentacoes: [...f.txs].sort((a, b) => b.at - a.at).slice(0, 10).map((x) => ({ tipo: x.type, valor: money(x.amount), nota: x.note ?? null, data: new Date(x.at).toLocaleString('pt-BR') })),
+        };
+      })(),
       sono: (() => {
         const sw = sleepWeek(data, now);
         const last = lastSleep(data);

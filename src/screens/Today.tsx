@@ -6,6 +6,7 @@ import { Ring } from '../components/Ring';
 import { Icon } from '../components/Icon';
 import { ActivityCard } from '../components/ActivityCard';
 import { SleepCard } from '../components/SleepCard';
+import { balance, goalProgress, moneyOrHidden } from '../lib/finance';
 import type { Activity } from '../lib/types';
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
   onSettings: () => void;
   onSleep: (rateId?: string) => void;
   onLogs: (activityId: string) => void;
+  onCalendar: () => void;
+  onFinance: () => void;
 }
 
 function useNow(ms = 30_000) {
@@ -25,7 +28,7 @@ function useNow(ms = 30_000) {
   return now;
 }
 
-export function Today({ userName, onEdit, onSettings, onSleep, onLogs }: Props) {
+export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalendar, onFinance }: Props) {
   const data = useData();
   const now = useNow();
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
@@ -50,9 +53,14 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs }: Props) 
             {greeting()}, <span className="grad-text">{first}</span>
           </h1>
         </div>
-        <button className="avatar glass" onClick={onSettings} aria-label="Ajustes">
-          {first.slice(0, 1).toUpperCase()}
-        </button>
+        <div className="row">
+          <button className="icon-btn glass" onClick={onCalendar} aria-label="Abrir agenda do mês">
+            <Icon name="calendar" size={20} />
+          </button>
+          <button className="avatar glass" onClick={onSettings} aria-label="Ajustes">
+            {first.slice(0, 1).toUpperCase()}
+          </button>
+        </div>
       </header>
 
       <section className="hero glass">
@@ -90,6 +98,8 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs }: Props) 
       </div>
 
       {isToday && <SleepCard now={now} onOpen={onSleep} />}
+
+      {isToday && <MoneyMini onOpen={onFinance} />}
 
       {trackers.length > 0 && isToday && (
         <>
@@ -155,5 +165,36 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs }: Props) 
         <Icon name="plus" size={28} stroke={2.5} />
       </button>
     </div>
+  );
+}
+
+/** Resumo do dinheiro na tela Hoje (respeita o "esconder valores"). */
+function MoneyMini({ onOpen }: { onOpen: () => void }) {
+  const f = useData().finance;
+  const p = goalProgress(f);
+  if (!f.txs.length && !f.goal) return null;
+  return (
+    <button className="glass money-mini" onClick={onOpen}>
+      <span className="tx-icon in">
+        <Icon name="wallet" size={18} />
+      </span>
+      <span className="money-mini-main">
+        <span className="money-mini-top">
+          <span className="small muted">Saldo</span>
+          <strong>{moneyOrHidden(balance(f), f.hideValues)}</strong>
+        </span>
+        {p && (
+          <>
+            <span className="goal-meter">
+              <span style={{ width: `${Math.min(p.ratio, 1) * 100}%` }} />
+            </span>
+            <span className="tiny muted">
+              {f.goalName}: {Math.floor(p.ratio * 100)}%
+            </span>
+          </>
+        )}
+      </span>
+      <Icon name="right" size={18} />
+    </button>
   );
 }
