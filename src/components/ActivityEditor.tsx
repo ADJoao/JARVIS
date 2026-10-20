@@ -29,6 +29,13 @@ export function ActivityEditor({ activity, onClose }: Props) {
   const [group, setGroup] = useState(0);
   const [error, setError] = useState('');
   const set = (patch: Partial<Activity>) => setA((x) => ({ ...x, ...patch }));
+  // rascunho do campo de horas enquanto a pessoa digita (pode ficar vazio); null = mostra o valor salvo
+  const [hoursDraft, setHoursDraft] = useState<string | null>(null);
+  const hoursText = hoursDraft ?? String(a.alertHours ?? '');
+  const setHours = (h: number) => {
+    setHoursDraft(null);
+    set({ alertHours: Math.max(1, Math.min(240, h)) });
+  };
 
   const setKind = (kind: Schedule['kind']) => {
     if (kind === 'weekdays') set({ schedule: { kind, days: [1, 2, 3, 4, 5] } });
@@ -210,18 +217,47 @@ export function ActivityEditor({ activity, onClose }: Props) {
         <button className={`switch ${a.alertHours ? 'on' : ''}`} onClick={() => set({ alertHours: a.alertHours ? undefined : 24 })} aria-label="Alerta" />
       </div>
       {a.alertHours !== undefined && (
-        <div className="inline-field">
-          <span>Alertar depois de</span>
-          <input
-            type="number"
-            className="input small-input"
-            min={1}
-            max={240}
-            value={a.alertHours}
-            onChange={(e) => set({ alertHours: Math.max(1, Math.min(240, Number(e.target.value) || 1)) })}
-          />
-          <span>horas</span>
-        </div>
+        <>
+          <label className="field-label" htmlFor="alert-hours">
+            Alertar depois de quantas horas sem registrar
+          </label>
+          <div className="stepper">
+            <button onClick={() => setHours((a.alertHours ?? 1) - 1)} aria-label="Menos uma hora">
+              <Icon name="minus" size={18} />
+            </button>
+            <span className="stepper-field">
+              <input
+                id="alert-hours"
+                inputMode="numeric"
+                className="stepper-input"
+                value={hoursText}
+                onChange={(e) => {
+                  const txt = e.target.value.replace(/\D/g, '').slice(0, 3);
+                  setHoursDraft(txt);
+                  const n = Number(txt);
+                  if (txt && n >= 1 && n <= 240) set({ alertHours: n });
+                }}
+                onBlur={() => {
+                  // número grande demais vira 240; vazio volta para o último valor válido
+                  if (hoursDraft && Number(hoursDraft) > 240) setHours(240);
+                  else setHoursDraft(null);
+                }}
+              />
+              <span className="muted small">horas</span>
+            </span>
+            <button onClick={() => setHours((a.alertHours ?? 0) + 1)} aria-label="Mais uma hora">
+              <Icon name="plus" size={18} />
+            </button>
+          </div>
+          <div className="chips wrap">
+            {[2, 3, 4, 5, 6, 8, 12, 24, 48].map((h) => (
+              <button key={h} className={`chip ${a.alertHours === h ? 'on' : ''}`} onClick={() => setHours(h)}>
+                {h}h
+              </button>
+            ))}
+          </div>
+          {hoursText !== String(a.alertHours) && <p className="tiny muted">Use um número de 1 a 240 horas.</p>}
+        </>
       )}
       {a.alertHours !== undefined && (
         <div className="toggle-row sub">

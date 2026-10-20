@@ -4,9 +4,19 @@ import sharp from 'sharp';
 import { mkdirSync } from 'node:fs';
 
 const SRC = 'assets/logo-source.webp';
+// Quanto o logo ocupa: ZOOM aproxima nos ícones quadrados; ADAPTIVE é o tamanho do logo
+// (em px, de 1024) na camada da frente do ícone adaptativo do Android, que mostra só o miolo.
+const ZOOM = 1.3;
+const ADAPTIVE = 870;
 mkdirSync('public/icons', { recursive: true });
 
-const logo = (size) => sharp(SRC).resize(size, size).png().toBuffer();
+// zoom > 1 aproxima o logo (corta a margem escura em volta do anel)
+async function logo(size, zoom = 1) {
+  const big = Math.round(size * zoom);
+  const off = Math.round((big - size) / 2);
+  const img = sharp(SRC).resize(big, big);
+  return (zoom > 1 ? sharp(await img.png().toBuffer()).extract({ left: off, top: off, width: size, height: size }) : img).png().toBuffer();
+}
 
 // Fundo no mesmo tom do logo (azul-marinho escuro com centro levemente mais claro)
 const bgSvg = (size) => Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}">
@@ -33,7 +43,7 @@ async function save(buf, file) {
 
 // PWA / navegador
 for (const s of [192, 512]) {
-  const rounded = await sharp(await logo(s)).ensureAlpha().composite([{ input: roundedMask(s, s * 0.22), blend: 'dest-in' }]).png().toBuffer();
+  const rounded = await sharp(await logo(s, ZOOM)).ensureAlpha().composite([{ input: roundedMask(s, s * 0.22), blend: 'dest-in' }]).png().toBuffer();
   await save(rounded, `public/icons/icon-${s}.png`);
 }
 // maskable: o sistema recorta até 20% das bordas, então reduzimos o logo
@@ -43,10 +53,10 @@ await save(
 );
 
 // Android (@capacitor/assets): ícone legado, camadas do ícone adaptativo e splash
-await save(await logo(1024), 'assets/icon-only.png');
+await save(await logo(1024, ZOOM), 'assets/icon-only.png');
 await save(
   await sharp({ create: { width: 1024, height: 1024, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } })
-    .composite([{ input: await softLogo(700), gravity: 'center' }])
+    .composite([{ input: await softLogo(ADAPTIVE), gravity: 'center' }])
     .png()
     .toBuffer(),
   'assets/icon-foreground.png',
