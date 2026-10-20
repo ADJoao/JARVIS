@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from 'react';
 import type { Activity, Schedule } from '../lib/types';
 import { COLORS, EMOJI_GROUPS, TEMPLATES, fromTemplate } from '../lib/catalog';
-import { dayKey, WEEKDAYS_SHORT } from '../lib/date';
+import { dayKey, fmtDuration, fromKey, WEEKDAYS_SHORT } from '../lib/date';
+import { lastLog } from '../lib/stats';
 import { store, uid } from '../lib/storage';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
@@ -32,6 +33,10 @@ export function ActivityEditor({ activity, onClose }: Props) {
   // rascunho do campo de horas enquanto a pessoa digita (pode ficar vazio); null = mostra o valor salvo
   const [hoursDraft, setHoursDraft] = useState<string | null>(null);
   const hoursText = hoursDraft ?? String(a.alertHours ?? '');
+  // ao criar: quando foi a última vez (para o contador "tempo desde" já começar certo)
+  const [lastDate, setLastDate] = useState('');
+  const [lastTime, setLastTime] = useState('');
+  const lastLogged = activity ? lastLog(store.get(), activity.id) : undefined;
   const setHours = (h: number) => {
     setHoursDraft(null);
     set({ alertHours: Math.max(1, Math.min(240, h)) });
@@ -52,7 +57,16 @@ export function ActivityEditor({ activity, onClose }: Props) {
   const save = () => {
     if (!a.name.trim()) return setError('Dê um nome para a atividade.');
     if (a.schedule.kind === 'weekdays' && !a.schedule.days.length) return setError('Escolha pelo menos um dia da semana.');
+    let lastAt: number | undefined;
+    if (!activity && lastDate) {
+      const d = fromKey(lastDate);
+      const [h, m] = (lastTime || '12:00').split(':').map(Number);
+      d.setHours(h, m, 0, 0);
+      if (d.getTime() > Date.now() + 60_000) return setError('A "última vez" não pode ser no futuro.');
+      lastAt = d.getTime();
+    }
     store.saveActivity({ ...a, name: a.name.trim(), goal: Math.max(1, Math.round(a.goal)), reminder: a.reminder && Boolean(a.time) });
+    if (lastAt) store.addLog(a.id, lastAt);
     onClose();
   };
 
@@ -272,6 +286,50 @@ export function ActivityEditor({ activity, onClose }: Props) {
           <button className={`switch ${a.alertNotify !== false ? 'on' : ''}`} onClick={() => set({ alertNotify: a.alertNotify === false })} aria-label="Notificar alerta no celular" />
         </div>
       )}
+
+      {(a.alertHours !== undefined || kind === 'free') &&
+        (activity ? (
+          <p className="tiny muted">
+            {lastLogged ? `Último registro: há ${fmtDuration(Date.now() - lastLogged.at)}. ` : 'Sem registros ainda. '}
+            Para registrar em outro horário, toque no cartão dela em "Tempo desde o último", na tela Hoje.
+          </p>
+        ) : (
+          <>
+            <label className="field-label" htmlFor="last-date">
+              Quando foi a última vez? (opcional)
+            </label>
+            <div className="chips wrap">
+              {[
+                ['Agora', 0],
+                ['Ontem', 1],
+                ['Há 2 dias', 2],
+                ['Há 3 dias', 3],
+              ].map(([label, n]) => {
+                const key = dayKey(new Date(Date.now() - (n as number) * 86400_000));
+                return (
+                  <button
+                    key={label}
+                    className={`chip ${lastDate === key && (n !== 0 || lastTime) ? 'on' : ''}`}
+                    onClick={() => {
+                      const d = new Date();
+                      setLastDate(key);
+                      setLastTime(n === 0 ? `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}` : lastTime || '08:00');
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="row-2">
+              <input id="last-date" type="date" className="input" value={lastDate} max={dayKey(new Date())} onChange={(e) => setLastDate(e.target.value)} aria-label="Dia da última vez" />
+              <input type="time" className="input" value={lastTime} onChange={(e) => setLastTime(e.target.value)} aria-label="Hora da última vez" />
+            </div>
+            <p className="tiny muted">
+              {lastDate ? 'O contador "tempo desde" já começa a partir desse horário.' : 'Se deixar em branco, o contador começa quando você registrar pela primeira vez.'}
+            </p>
+          </>
+        ))}
 
       <label className="field-label">Observações</label>
       <textarea className="input" rows={2} placeholder="Opcional" value={a.notes ?? ''} onChange={(e) => set({ notes: e.target.value || undefined })} />

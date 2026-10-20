@@ -13,6 +13,7 @@ interface Props {
   onEdit: (a?: Activity) => void;
   onSettings: () => void;
   onSleep: (rateId?: string) => void;
+  onLogs: (activityId: string) => void;
 }
 
 function useNow(ms = 30_000) {
@@ -24,7 +25,7 @@ function useNow(ms = 30_000) {
   return now;
 }
 
-export function Today({ userName, onEdit, onSettings, onSleep }: Props) {
+export function Today({ userName, onEdit, onSettings, onSleep, onLogs }: Props) {
   const data = useData();
   const now = useNow();
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
@@ -100,22 +101,31 @@ export function Today({ userName, onEdit, onSettings, onSleep }: Props) {
               const over = Boolean(a.alertHours && last && ms > a.alertHours * 3600_000);
               const ratio = a.alertHours && last ? Math.min(ms / (a.alertHours * 3600_000), 1) : 0;
               return (
-                <div key={a.id} className={`tracker glass ${over ? 'over' : ''}`} style={{ '--c': a.color, '--p': ratio } as CSSProperties}>
+                <div
+                  key={a.id}
+                  className={`tracker glass ${over ? 'over' : ''}`}
+                  style={{ '--c': a.color, '--p': ratio } as CSSProperties}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => onLogs(a.id)}
+                  onKeyDown={(e) => e.key === 'Enter' && onLogs(a.id)}
+                >
                   <div className="tracker-top">
                     <span className="tracker-emoji">{a.emoji}</span>
                     <button
                       className="round-btn small"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         store.addLog(a.id);
                         navigator.vibrate?.(15);
                       }}
-                      aria-label={`Registrar ${a.name}`}
+                      aria-label={`Registrar ${a.name} agora`}
                     >
                       <Icon name="plus" size={16} stroke={2.5} />
                     </button>
                   </div>
                   <div className="tracker-time">{last ? fmtDuration(ms) : '—'}</div>
-                  <div className="tiny muted">{last ? `sem ${a.name.toLowerCase()}` : 'nenhum registro'}</div>
+                  <div className="tiny muted">{last ? `sem ${a.name.toLowerCase()}` : 'toque e diga quando foi'}</div>
                   {a.alertHours && <div className="tracker-bar" />}
                 </div>
               );
