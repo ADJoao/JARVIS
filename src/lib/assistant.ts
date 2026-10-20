@@ -3,6 +3,7 @@ import { store } from './storage';
 import { addDays, fmtDuration, fmtTime, greeting, startOfDay, WEEKDAYS_LONG } from './date';
 import { dayStats, grade, indexLogs, lastLog, streak, suggestions, weekStats } from './stats';
 import { scheduleLabel } from './catalog';
+import { evaluateSleep, fmtHours, hoursOf, lastSleep, sleepSummaryText, sleepTips, sleepWeek } from './sleep';
 
 /** Remove acentos e deixa minúsculo para comparar texto. */
 export const norm = (s: string) =>
@@ -113,13 +114,37 @@ const HELP = `Posso te ajudar com coisas como:
 • "Como está meu desempenho?"
 • "O que eu devo melhorar?"
 • "Bebi água" / "Fui ao banheiro" (eu registro pra você)
-• "O que tenho amanhã?"`;
+• "O que tenho amanhã?"
+• "Quanto eu dormi?" / "Como está meu sono?"
+• "Vou dormir" / "Acordei"`;
 
 /** Assistente local: funciona offline e de graça, entendendo perguntas comuns. */
 export function localAnswer(text: string): { text: string; understood: boolean; action?: boolean } {
   const data = store.get();
   const t = norm(text);
   const act = matchActivity(data, text);
+
+  // ---- sono ----
+  if (has(t, /^(vou|indo) (dormir|deitar)|boa noite,? (vou|to indo)/)) {
+    store.startSleep();
+    return { text: `Boa noite! 🌙 Marquei que você foi dormir às ${fmtTime(Date.now())}. Quando acordar, me diga "acordei" ou toque em "Acordei" na tela Hoje.`, understood: true, action: true };
+  }
+  if (has(t, /^(acordei|bom dia,? acordei|levantei)/)) {
+    const since = data.sleepingSince;
+    if (!since) return { text: 'Não encontrei um "Vou dormir" marcado. Você pode adicionar a noite manualmente no cartão de sono da tela Hoje.', understood: true, action: true };
+    const e = store.addSleep(since, Date.now());
+    if (!e) store.cancelSleep();
+    if (!e) return { text: 'Não consegui registrar essa noite (passou de 20 horas ou já há sono registrado nesse horário). Ajuste no cartão de sono da tela Hoje.', understood: true, action: true };
+    const v = evaluateSleep(hoursOf(e), data.settings.sleepGoal);
+    return { text: `Bom dia! ☀️ Você dormiu **${fmtHours(hoursOf(e))}** (${fmtTime(e.start)} → ${fmtTime(e.end)}): ${v.emoji} **${v.label}**.\n\n${v.message}`, understood: true, action: true };
+  }
+  if (has(t, /(sono|dormi|dormir|dormindo|cansad|insonia)/)) {
+    const wantsTips = has(t, /(melhorar|dica|como (eu )?(posso|faco)|ajuda|conselho)/);
+    const w = sleepWeek(data, new Date());
+    if (wantsTips || !lastSleep(data))
+      return { text: `Dicas para o seu sono:\n\n${sleepTips(data, w).map((s) => `• ${s}`).join('\n\n')}`, understood: true };
+    return { text: sleepSummaryText(data), understood: true };
+  }
 
   if (has(t, /(quanto tempo|faz quanto|ha quanto|desde quando|ultima vez|sem ir|ultimo registro)/) && act)
     return { text: since(data, act), understood: true };
@@ -207,6 +232,16 @@ export function contextForAi(data: UserData): string {
       },
       semana_passada: { concluidas: prev.completed, planejadas: prev.planned, aproveitamento: pct(prev.score) },
       sequencia_dias_bons: streak(data, idx),
+      sono: (() => {
+        const sw = sleepWeek(data, now);
+        const last = lastSleep(data);
+        return {
+          meta_horas: data.settings.sleepGoal,
+          dormindo_agora_desde: data.sleepingSince ? new Date(data.sleepingSince).toLocaleString('pt-BR') : null,
+          ultima_noite: last ? { dormiu: new Date(last.start).toLocaleString('pt-BR'), acordou: new Date(last.end).toLocaleString('pt-BR'), horas: fmtHours(hoursOf(last)), avaliacao: evaluateSleep(hoursOf(last), data.settings.sleepGoal).label, como_acordou_1a5: last.quality ?? null } : null,
+          semana: { media: sw.recorded ? fmtHours(sw.avg) : null, noites_registradas: sw.recorded, noites_no_ideal_7a9h: sw.goodNights, horas_faltando_para_meta: fmtHours(sw.debt), horario_medio_dormir: sw.avgBedtime ?? null, horario_medio_acordar: sw.avgWake ?? null },
+        };
+      })(),
     },
     null,
     1,

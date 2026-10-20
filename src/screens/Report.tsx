@@ -4,6 +4,7 @@ import { grade, indexLogs, suggestions, weekStats } from '../lib/stats';
 import { addDays, fmtDayMonth, startOfDay, WEEKDAYS_LONG, WEEKDAYS_SHORT } from '../lib/date';
 import { Ring } from '../components/Ring';
 import { Icon } from '../components/Icon';
+import { evaluateSleep, fmtHours, sleepWeek } from '../lib/sleep';
 
 const TONE_COLOR = { good: 'var(--good)', ok: 'var(--accent)', warn: 'var(--warn)', bad: 'var(--bad)' } as const;
 
@@ -16,6 +17,8 @@ export function Report() {
   const prev = useMemo(() => weekStats(data, addDays(new Date(refKey), -7), idx), [data, idx, refKey]);
   const g = grade(w.score, w.planned);
   const tips = useMemo(() => suggestions(data, w), [data, w]);
+  const sw = useMemo(() => sleepWeek(data, new Date(refKey)), [data, refKey]);
+  const sv = sw.recorded ? evaluateSleep(sw.avg, data.settings.sleepGoal) : undefined;
   const todayIdx = w.days.findIndex((d) => startOfDay(d.date).getTime() === startOfDay(new Date()).getTime());
   const [sel, setSel] = useState<number | null>(null);
   const selIdx = sel ?? (todayIdx >= 0 ? todayIdx : 6);
@@ -125,6 +128,36 @@ export function Report() {
           ))}
         </section>
       )}
+
+      <section className="glass list-card">
+        <div className="chart-head">
+          <strong>🌙 Sono da semana</strong>
+          {sv && <span className={`badge small-badge tone-${sv.tone}`}>{sv.emoji} {sv.label}</span>}
+        </div>
+        {sw.recorded ? (
+          <>
+            <div className="sleep-stats">
+              <div className="stat glass">
+                <span className="tiny muted">Média</span>
+                <strong>{fmtHours(sw.avg)}</strong>
+              </div>
+              <div className="stat glass">
+                <span className="tiny muted">No ideal</span>
+                <strong>
+                  {sw.goodNights}/{sw.recorded}
+                </strong>
+              </div>
+              <div className="stat glass">
+                <span className="tiny muted">Faltou</span>
+                <strong>{fmtHours(sw.debt)}</strong>
+              </div>
+            </div>
+            <p className="small muted">{sv?.message}</p>
+          </>
+        ) : (
+          <p className="small muted">Nenhuma noite registrada nessa semana. Use o cartão de sono na tela Hoje.</p>
+        )}
+      </section>
 
       <section className="glass list-card">
         <strong>

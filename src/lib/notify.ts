@@ -22,8 +22,10 @@ export async function ensurePermission(): Promise<boolean> {
 
 /**
  * Reagenda todos os lembretes a partir dos dados atuais:
- * - lembrete no horário de cada rotina;
- * - alerta "faz X horas sem ..." para rotinas com limite de horas.
+ * - lembrete no horário de cada rotina (se ligado na rotina);
+ * - alerta "faz X horas sem ..." (se a rotina permitir notificar);
+ * - lembrete de hora de dormir.
+ * No modo discreto o texto não revela qual é a atividade.
  */
 export async function rescheduleAll(data: UserData): Promise<void> {
   if (!isNative()) return;
@@ -36,12 +38,26 @@ export async function rescheduleAll(data: UserData): Promise<void> {
 
     const list: LocalNotificationSchema[] = [];
     const now = Date.now();
+    const discreet = data.settings.discreet;
+    const DISCREET_TITLE = 'JARVIS';
+    const DISCREET_BODY = 'Você tem um lembrete. Abra o app para ver.';
+
+    if (data.settings.bedtimeReminder && data.settings.bedtime) {
+      const [hour, minute] = data.settings.bedtime.split(':').map(Number);
+      list.push({
+        id: numId('__hora_de_dormir__', 77),
+        title: discreet ? DISCREET_TITLE : '😴 Hora de dormir',
+        body: discreet ? DISCREET_BODY : `Sua meta é dormir ${data.settings.sleepGoal}h. Toque em "Vou dormir" no JARVIS.`,
+        schedule: { on: { hour, minute }, allowWhileIdle: true },
+      });
+    }
+
     for (const a of data.activities) {
       if (a.archivedAt) continue;
       if (a.reminder && a.time) {
         const [hour, minute] = a.time.split(':').map(Number);
-        const body = a.goal > 1 ? `Meta de hoje: ${a.goal}${a.unit ? ` ${a.unit}` : ''}.` : 'Hora da sua rotina!';
-        const title = `${a.emoji} ${a.name}`;
+        const body = discreet ? DISCREET_BODY : a.goal > 1 ? `Meta de hoje: ${a.goal}${a.unit ? ` ${a.unit}` : ''}.` : 'Hora da sua rotina!';
+        const title = discreet ? DISCREET_TITLE : `${a.emoji} ${a.name}`;
         const s = a.schedule;
         if (s.kind === 'daily') {
           list.push({ id: numId(a.id, 0), title, body, schedule: { on: { hour, minute }, allowWhileIdle: true } });
@@ -55,15 +71,15 @@ export async function rescheduleAll(data: UserData): Promise<void> {
           if (at.getTime() > now) list.push({ id: numId(a.id, 9), title, body, schedule: { at, allowWhileIdle: true } });
         }
       }
-      if (a.alertHours) {
+      if (a.alertHours && a.alertNotify !== false) {
         const last = lastLog(data, a.id);
         const base = last?.at ?? a.createdAt;
         const at = new Date(base + a.alertHours * 3600_000);
         if (at.getTime() > now + 60_000)
           list.push({
             id: numId(a.id, 50),
-            title: `${a.emoji} Já faz ${a.alertHours}h…`,
-            body: `Você está há ${a.alertHours} horas sem registrar "${a.name}".`,
+            title: discreet ? DISCREET_TITLE : `${a.emoji} Já faz ${a.alertHours}h…`,
+            body: discreet ? DISCREET_BODY : `Você está há ${a.alertHours} horas sem registrar "${a.name}".`,
             schedule: { at, allowWhileIdle: true },
           });
       }

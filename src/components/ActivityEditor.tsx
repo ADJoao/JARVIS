@@ -204,13 +204,13 @@ export function ActivityEditor({ activity, onClose }: Props) {
       <div className="toggle-row">
         <div>
           <strong>Alerta "tempo sem fazer"</strong>
-          <p className="muted small">Avisa se passar muitas horas sem registrar (ótimo para banheiro e água).</p>
+          <p className="muted small">Mostra quando passar muitas horas sem registrar (ótimo para banheiro e água).</p>
         </div>
         <button className={`switch ${a.alertHours ? 'on' : ''}`} onClick={() => set({ alertHours: a.alertHours ? undefined : 24 })} aria-label="Alerta" />
       </div>
       {a.alertHours !== undefined && (
         <div className="inline-field">
-          <span>Avisar depois de</span>
+          <span>Alertar depois de</span>
           <input
             type="number"
             className="input small-input"
@@ -220,6 +220,19 @@ export function ActivityEditor({ activity, onClose }: Props) {
             onChange={(e) => set({ alertHours: Math.max(1, Math.min(240, Number(e.target.value) || 1)) })}
           />
           <span>horas</span>
+        </div>
+      )}
+      {a.alertHours !== undefined && (
+        <div className="toggle-row sub">
+          <div>
+            <strong>Notificar no celular</strong>
+            <p className="muted small">
+              {a.alertNotify === false
+                ? 'Desligado: o alerta aparece só dentro do app, sem notificação.'
+                : 'Ligado: chega uma notificação quando passar do tempo.'}
+            </p>
+          </div>
+          <button className={`switch ${a.alertNotify !== false ? 'on' : ''}`} onClick={() => set({ alertNotify: a.alertNotify === false })} aria-label="Notificar alerta no celular" />
         </div>
       )}
 

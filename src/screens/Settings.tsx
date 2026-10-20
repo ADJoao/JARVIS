@@ -5,6 +5,7 @@ import { changePassword, deleteAccount } from '../lib/auth';
 import { ensurePermission, isNative } from '../lib/notify';
 import { Sheet } from '../components/Sheet';
 import { Icon } from '../components/Icon';
+import { fmtHours } from '../lib/sleep';
 import type { UserAccount } from '../lib/types';
 
 interface Props {
@@ -37,6 +38,7 @@ export function Settings({ user, onClose, onLogout }: Props) {
   const [msg, setMsg] = useState('');
   const [pw, setPw] = useState({ cur: '', next: '' });
   const fileRef = useRef<HTMLInputElement>(null);
+  const activeActs = data.activities.filter((a) => !a.archivedAt);
 
   const flash = (m: string) => {
     setMsg(m);
@@ -69,16 +71,16 @@ export function Settings({ user, onClose, onLogout }: Props) {
       </div>
 
       <h3 className="section-title">
-        <Icon name="bell" size={16} /> Lembretes
+        <Icon name="bell" size={16} /> Notificações
       </h3>
       <div className="toggle-row">
         <div>
-          <strong>Notificações</strong>
-          <p className="muted small">{isNative() ? 'Lembretes nos horários e alertas de "tempo sem fazer".' : 'Funcionam no app Android instalado (APK).'}</p>
+          <strong>Receber notificações</strong>
+          <p className="muted small">{isNative() ? 'Chave geral: desligue para silenciar todas.' : 'Funcionam no app Android instalado (APK).'}</p>
         </div>
         <button
           className={`switch ${s.notifications ? 'on' : ''}`}
-          aria-label="Notificações"
+          aria-label="Receber notificações"
           onClick={async () => {
             const next = !s.notifications;
             if (next && isNative() && !(await ensurePermission())) return flash('Permissão de notificação negada nas configurações do Android.');
@@ -86,6 +88,79 @@ export function Settings({ user, onClose, onLogout }: Props) {
           }}
         />
       </div>
+      {s.notifications && (
+        <>
+          <div className="toggle-row">
+            <div>
+              <strong>Modo discreto</strong>
+              <p className="muted small">A notificação mostra só "JARVIS: você tem um lembrete", sem dizer qual atividade é.</p>
+            </div>
+            <button className={`switch ${s.discreet ? 'on' : ''}`} aria-label="Modo discreto" onClick={() => store.setSettings({ discreet: !s.discreet })} />
+          </div>
+
+          <p className="field-label">Escolha quais notificações receber</p>
+          <div className="notif-list glass">
+            <div className="notif-row">
+              <span className="notif-emoji">😴</span>
+              <span className="notif-name">Hora de dormir ({s.bedtime})</span>
+              <button className={`mini-toggle ${s.bedtimeReminder ? 'on' : ''}`} onClick={() => store.setSettings({ bedtimeReminder: !s.bedtimeReminder })}>
+                {s.bedtimeReminder ? 'Ligada' : 'Desligada'}
+              </button>
+            </div>
+            {activeActs.map((a) => (
+              <div key={a.id} className="notif-row">
+                <span className="notif-emoji">{a.emoji}</span>
+                <span className="notif-name">{a.name}</span>
+                <div className="notif-toggles">
+                  {a.time && (
+                    <button
+                      className={`mini-toggle ${a.reminder ? 'on' : ''}`}
+                      title="Lembrete no horário"
+                      onClick={() => store.saveActivity({ ...a, reminder: !a.reminder })}
+                    >
+                      ⏰ {a.time}
+                    </button>
+                  )}
+                  {a.alertHours !== undefined && (
+                    <button
+                      className={`mini-toggle ${a.alertNotify !== false ? 'on' : ''}`}
+                      title={`Alerta de ${a.alertHours}h sem registrar`}
+                      onClick={() => store.saveActivity({ ...a, alertNotify: a.alertNotify === false })}
+                    >
+                      ⚠️ {a.alertHours}h sem
+                    </button>
+                  )}
+                  {!a.time && a.alertHours === undefined && <span className="tiny muted">sem notificação</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="tiny muted">Destacado = ligada. Toque para ligar ou desligar. ⏰ é o lembrete no horário; ⚠️ é o aviso de "tempo sem fazer".</p>
+        </>
+      )}
+
+      <h3 className="section-title">
+        <span aria-hidden="true">🌙</span> Sono
+      </h3>
+      <div className="row-2">
+        <div>
+          <label className="field-label">Meta por noite</label>
+          <div className="stepper">
+            <button onClick={() => store.setSettings({ sleepGoal: Math.max(5, s.sleepGoal - 0.5) })} aria-label="Menos">
+              <Icon name="minus" size={18} />
+            </button>
+            <span>{fmtHours(s.sleepGoal)}</span>
+            <button onClick={() => store.setSettings({ sleepGoal: Math.min(12, s.sleepGoal + 0.5) })} aria-label="Mais">
+              <Icon name="plus" size={18} />
+            </button>
+          </div>
+        </div>
+        <div>
+          <label className="field-label">Hora de dormir</label>
+          <input type="time" className="input" value={s.bedtime} onChange={(e) => e.target.value && store.setSettings({ bedtime: e.target.value })} />
+        </div>
+      </div>
+      <p className="tiny muted">O recomendado para adultos é de 7 a 9 horas por noite.</p>
 
       <h3 className="section-title">
         <Icon name="sparkles" size={16} /> Assistente com IA (opcional)

@@ -5,12 +5,14 @@ import { addDays, fmtDuration, fmtLongDate, greeting, sameDay, startOfDay, start
 import { Ring } from '../components/Ring';
 import { Icon } from '../components/Icon';
 import { ActivityCard } from '../components/ActivityCard';
+import { SleepCard } from '../components/SleepCard';
 import type { Activity } from '../lib/types';
 
 interface Props {
   userName: string;
   onEdit: (a?: Activity) => void;
   onSettings: () => void;
+  onSleep: (rateId?: string) => void;
 }
 
 function useNow(ms = 30_000) {
@@ -22,7 +24,7 @@ function useNow(ms = 30_000) {
   return now;
 }
 
-export function Today({ userName, onEdit, onSettings }: Props) {
+export function Today({ userName, onEdit, onSettings, onSleep }: Props) {
   const data = useData();
   const now = useNow();
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
@@ -85,6 +87,8 @@ export function Today({ userName, onEdit, onSettings }: Props) {
           );
         })}
       </div>
+
+      {isToday && <SleepCard now={now} onOpen={onSleep} />}
 
       {trackers.length > 0 && isToday && (
         <>

@@ -15,8 +15,10 @@ export interface Activity {
   /** Quantas vezes por dia conta como "feito" (ex.: 8 copos de água). */
   goal: number;
   unit?: string;
-  /** Avisar se passar X horas sem registrar (ex.: banheiro). */
+  /** Mostrar alerta se passar X horas sem registrar (ex.: banheiro). */
   alertHours?: number;
+  /** Se o alerta de "X horas sem" também vira notificação no celular (padrão: sim). */
+  alertNotify?: boolean;
   reminder: boolean;
   notes?: string;
   createdAt: number;
@@ -27,6 +29,16 @@ export interface LogEntry {
   id: string;
   activityId: string;
   at: number;
+}
+
+export interface SleepEntry {
+  id: string;
+  /** Quando foi dormir (timestamp). */
+  start: number;
+  /** Quando acordou (timestamp). */
+  end: number;
+  /** Como acordou: 1 (péssimo) a 5 (ótimo). */
+  quality?: number;
 }
 
 export interface ChatMsg {
@@ -45,6 +57,13 @@ export interface Settings {
   apiKey: string;
   model: AiModel;
   notifications: boolean;
+  /** Notificações sem nome/ícone da atividade (privacidade). */
+  discreet: boolean;
+  /** Meta de sono em horas. */
+  sleepGoal: number;
+  /** Horário em que pretende dormir (HH:MM). */
+  bedtime: string;
+  bedtimeReminder: boolean;
 }
 
 export interface UserData {
@@ -52,6 +71,9 @@ export interface UserData {
   activities: Activity[];
   logs: LogEntry[];
   chat: ChatMsg[];
+  sleep: SleepEntry[];
+  /** Se está dormindo agora: desde quando ("Vou dormir" foi tocado). */
+  sleepingSince?: number;
   settings: Settings;
 }
 

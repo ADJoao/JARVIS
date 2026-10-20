@@ -2,9 +2,10 @@ import { useState, type FormEvent } from 'react';
 import { listUsers, login, register, startSession } from '../lib/auth';
 import type { UserAccount } from '../lib/types';
 import { Icon } from '../components/Icon';
+import { DEMO_NAME, enterDemo } from '../lib/demo';
 
 export function Login({ onLogin }: { onLogin: (u: UserAccount) => void }) {
-  const users = listUsers();
+  const users = listUsers().filter((u) => u.name !== DEMO_NAME);
   const [mode, setMode] = useState<'login' | 'register'>(users.length ? 'login' : 'register');
   const [name, setName] = useState(users.length === 1 ? users[0].name : '');
   const [pass, setPass] = useState('');
@@ -88,6 +89,25 @@ export function Login({ onLogin }: { onLogin: (u: UserAccount) => void }) {
 
         <button className="btn primary block" disabled={busy || !name || !pass}>
           {busy ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta e entrar'}
+        </button>
+        <button
+          type="button"
+          className="btn ghost block"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              const u = await enterDemo();
+              startSession(u.id, false);
+              onLogin(u);
+            } catch {
+              setError('Não foi possível abrir a demonstração.');
+            } finally {
+              setBusy(false);
+            }
+          }}
+        >
+          👀 Ver demonstração com dados de exemplo
         </button>
         <p className="tiny muted center">
           Seus dados ficam salvos somente neste aparelho, separados por conta. A senha é guardada criptografada (hash).

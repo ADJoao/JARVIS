@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import type { Activity, LogEntry, Settings, UserData } from './types';
+import type { Activity, LogEntry, Settings, SleepEntry, UserData } from './types';
 
 export const uid = () =>
   Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -10,6 +10,10 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
   model: 'claude-opus-5-5',
   notifications: true,
+  discreet: false,
+  sleepGoal: 8,
+  bedtime: '23:00',
+  bedtimeReminder: false,
 };
 
 const emptyData = (): UserData => ({
@@ -17,6 +21,7 @@ const emptyData = (): UserData => ({
   activities: [],
   logs: [],
   chat: [],
+  sleep: [],
   settings: { ...DEFAULT_SETTINGS },
 });
 
@@ -107,6 +112,36 @@ class Store {
 
   removeLog(id: string) {
     this.update((d) => ({ ...d, logs: d.logs.filter((l) => l.id !== id) }));
+  }
+
+  // ---- sono ----
+  startSleep(at = Date.now()) {
+    this.update((d) => ({ ...d, sleepingSince: at }));
+  }
+
+  cancelSleep() {
+    this.update((d) => ({ ...d, sleepingSince: undefined }));
+  }
+
+  /** Registra uma noite de sono (e encerra o "Vou dormir" em andamento). */
+  addSleep(start: number, end: number, quality?: number): SleepEntry | undefined {
+    if (end <= start || end - start > 20 * 3600_000) return undefined;
+    if (this.data.sleep.some((s) => start < s.end && end > s.start)) return undefined; // sobreposição
+    const entry = { id: uid(), start, end, quality };
+    this.update((d) => ({
+      ...d,
+      sleepingSince: undefined,
+      sleep: [...d.sleep, entry].sort((a, b) => a.start - b.start),
+    }));
+    return entry;
+  }
+
+  updateSleep(id: string, patch: Partial<SleepEntry>) {
+    this.update((d) => ({ ...d, sleep: d.sleep.map((s) => (s.id === id ? { ...s, ...patch } : s)) }));
+  }
+
+  removeSleep(id: string) {
+    this.update((d) => ({ ...d, sleep: d.sleep.filter((s) => s.id !== id) }));
   }
 
   setSettings(patch: Partial<Settings>) {

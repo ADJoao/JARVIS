@@ -1405,6 +1405,240 @@ textarea.input {
   border-color: #fff;
 }
 
+/* ---------- sono ---------- */
+.sleep-card {
+  padding: 14px;
+  display: grid;
+  gap: 12px;
+  overflow: hidden;
+}
+.sleep-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(90% 120% at 0% 0%, rgba(139, 124, 255, 0.28), transparent 60%);
+  pointer-events: none;
+  border-radius: inherit;
+}
+.sleep-card.sleeping::before {
+  background: radial-gradient(100% 140% at 0% 0%, rgba(80, 90, 255, 0.45), transparent 65%);
+}
+.sleep-main {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.sleep-main strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.sleep-moon {
+  font-size: 34px;
+  width: 48px;
+  text-align: center;
+}
+.sleeping .sleep-moon {
+  animation: orb 3.5s ease-in-out infinite;
+}
+.sleep-actions {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 10px;
+}
+.small-btn {
+  padding: 10px 12px;
+  font-size: 14px;
+  border-radius: 14px;
+}
+.small-badge {
+  margin-top: 0;
+  padding: 3px 9px;
+  font-size: 12px;
+}
+.sleep-rate {
+  padding: 16px;
+  display: grid;
+  gap: 10px;
+}
+.quality-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+}
+.quality {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 8px 2px;
+  border-radius: 14px;
+  font-size: 24px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+}
+.quality .tiny {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.quality.on {
+  background: rgba(124, 196, 255, 0.2);
+  border-color: var(--accent);
+}
+.sleep-week-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+.sleep-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.stat {
+  padding: 12px;
+  border-radius: 16px;
+  display: grid;
+  gap: 4px;
+}
+.stat strong {
+  font-size: 18px;
+}
+.sleep-bars .bar {
+  width: 20px;
+}
+.tone-bar-good {
+  background: var(--good) !important;
+}
+.tone-bar-warn {
+  background: var(--warn) !important;
+}
+.tone-bar-bad {
+  background: var(--bad) !important;
+}
+.tone-bar-ok {
+  background: var(--accent) !important;
+}
+.sleep-bars .bar-col:not(.on) .bar {
+  opacity: 0.75;
+}
+.ideal-band {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: rgba(107, 227, 166, 0.08);
+  border-top: 1px solid rgba(107, 227, 166, 0.2);
+  border-bottom: 1px solid rgba(107, 227, 166, 0.2);
+  pointer-events: none;
+}
+.ideal-band span {
+  position: absolute;
+  right: 4px;
+  bottom: 2px;
+  color: #9fe9c4;
+}
+.goal-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1.5px dashed rgba(178, 140, 255, 0.8);
+  pointer-events: none;
+  z-index: 2;
+}
+.goal-line span {
+  position: absolute;
+  left: 4px;
+  top: -16px;
+  color: #d4c4ff;
+}
+.legend-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+.legend-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  display: inline-block;
+}
+.sleep-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sleep-row-main {
+  flex: 1;
+  display: grid;
+  gap: 2px;
+}
+
+/* ---------- central de notificações ---------- */
+.notif-list {
+  padding: 4px 14px;
+  border-radius: var(--radius-sm);
+}
+.notif-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+.notif-row:last-child {
+  border-bottom: 0;
+}
+.notif-emoji {
+  font-size: 20px;
+  width: 26px;
+  text-align: center;
+}
+.notif-name {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 14.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notif-toggles {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.mini-toggle {
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 6px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  text-decoration: line-through;
+  background: transparent;
+  white-space: nowrap;
+}
+.mini-toggle.on {
+  color: #0b0d1c;
+  text-decoration: none;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  border-color: transparent;
+}
+.toggle-row.sub {
+  margin-top: -4px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
 /* ---------- login ---------- */
 .login {
   min-height: 100vh;

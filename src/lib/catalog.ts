@@ -30,17 +30,17 @@ export interface Template {
   goal: number;
   unit?: string;
   alertHours?: number;
+  alertNotify?: boolean;
 }
 
 export const TEMPLATES: Template[] = [
-  { name: 'Ir ao banheiro', emoji: '💩', color: '#c7a17a', schedule: { kind: 'daily' }, goal: 1, unit: 'vez', alertHours: 24 },
+  { name: 'Ir ao banheiro', emoji: '💩', color: '#c7a17a', schedule: { kind: 'daily' }, goal: 1, unit: 'vez', alertHours: 24, alertNotify: false },
   { name: 'Beber água', emoji: '💧', color: '#7cc4ff', schedule: { kind: 'daily' }, goal: 8, unit: 'copos', alertHours: 3 },
   { name: 'Refeições', emoji: '🍽️', color: '#ff8a6b', schedule: { kind: 'daily' }, goal: 3, unit: 'refeições', alertHours: 5 },
   { name: 'Estudos', emoji: '📚', color: '#8b7cff', schedule: { kind: 'weekdays', days: [1, 2, 3, 4, 5] }, time: '19:00', goal: 1, unit: 'sessão' },
   { name: 'Atividade física', emoji: '🏋️', color: '#6be3a6', schedule: { kind: 'weekdays', days: [1, 3, 5] }, time: '07:00', goal: 1, unit: 'treino' },
   { name: 'Trabalho focado', emoji: '💼', color: '#ffc857', schedule: { kind: 'weekdays', days: [1, 2, 3, 4, 5] }, time: '09:00', goal: 1, unit: 'bloco' },
   { name: 'Remédio', emoji: '💊', color: '#ff7ce0', schedule: { kind: 'daily' }, time: '08:00', goal: 1, unit: 'dose' },
-  { name: 'Dormir cedo', emoji: '😴', color: '#5fe0e0', schedule: { kind: 'daily' }, time: '23:00', goal: 1 },
   { name: 'Leitura', emoji: '📖', color: '#e8e8f0', schedule: { kind: 'daily' }, time: '21:30', goal: 1, unit: 'capítulo' },
   { name: 'Meditação', emoji: '🧘', color: '#8b7cff', schedule: { kind: 'daily' }, time: '07:30', goal: 1 },
 ];
@@ -56,6 +56,7 @@ export function fromTemplate(t: Template, id: string): Activity {
     goal: t.goal,
     unit: t.unit,
     alertHours: t.alertHours,
+    alertNotify: t.alertNotify,
     reminder: Boolean(t.time),
     createdAt: Date.now(),
   };

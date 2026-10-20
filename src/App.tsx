@@ -14,6 +14,7 @@ import { Report } from './screens/Report';
 import { Assistant } from './screens/Assistant';
 import { Settings } from './screens/Settings';
 import { ActivityEditor } from './components/ActivityEditor';
+import { SleepSheet } from './components/SleepSheet';
 import { Icon } from './components/Icon';
 
 type Tab = 'today' | 'calendar' | 'routines' | 'report' | 'assistant';
@@ -35,6 +36,7 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('today');
   const [editing, setEditing] = useState<{ activity?: Activity } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [sleepOpen, setSleepOpen] = useState<{ rateId?: string } | null>(null);
   const data = useData();
 
   // Papel de parede
@@ -48,7 +50,7 @@ export default function App() {
     if (!user) return;
     const t = setTimeout(() => rescheduleAll(store.get()), 800);
     return () => clearTimeout(t);
-  }, [user, data.activities, data.logs, data.settings.notifications]);
+  }, [user, data.activities, data.logs, data.settings]);
 
   // Pede permissão de notificação na primeira vez (app Android)
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function App() {
   return (
     <div className="app">
       <main key={tab} className="fade-in">
-        {tab === 'today' && <Today userName={user.name} onEdit={onEdit} onSettings={openSettings} />}
+        {tab === 'today' && <Today userName={user.name} onEdit={onEdit} onSettings={openSettings} onSleep={(rateId) => setSleepOpen({ rateId })} />}
         {tab === 'calendar' && <CalendarScreen onEdit={onEdit} />}
         {tab === 'routines' && <Activities onEdit={onEdit} />}
         {tab === 'report' && <Report />}
@@ -116,6 +118,7 @@ export default function App() {
       </nav>
 
       {editing && <ActivityEditor activity={editing.activity} onClose={() => setEditing(null)} />}
+      {sleepOpen && <SleepSheet rateId={sleepOpen.rateId} onClose={() => setSleepOpen(null)} />}
       {settingsOpen && <Settings user={user} onClose={() => setSettingsOpen(false)} onLogout={logout} />}
     </div>
   );
