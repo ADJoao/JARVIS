@@ -10,8 +10,10 @@ export interface Activity {
   emoji: string;
   color: string;
   schedule: Schedule;
-  /** Horário no formato HH:MM (opcional). */
+  /** Primeiro horário no formato HH:MM (opcional). */
   time?: string;
+  /** Todos os horários do dia, em ordem (ex.: remédio 06:20, 14:20, 22:20). Inclui `time`. */
+  times?: string[];
   /** Quantas vezes por dia conta como "feito" (ex.: 8 copos de água). */
   goal: number;
   unit?: string;

@@ -4,6 +4,7 @@ import { scheduleLabel } from '../lib/catalog';
 import { lastLog } from '../lib/stats';
 import { fmtDuration } from '../lib/date';
 import { Icon } from '../components/Icon';
+import { timesLabel, timesOf } from '../lib/times';
 import type { Activity } from '../lib/types';
 
 export function Activities({ onEdit }: { onEdit: (a?: Activity) => void }) {
@@ -51,13 +52,13 @@ export function Activities({ onEdit }: { onEdit: (a?: Activity) => void }) {
                 <span className="routine-name">{a.name}</span>
                 <span className="tiny muted">
                   {scheduleLabel(a.schedule)}
-                  {a.time ? ` · ${a.time}` : ''}
+                  {timesOf(a).length ? ` · ${timesLabel(a)}` : ''}
                 </span>
                 <span className="tiny muted">
                   Meta: {a.goal} {a.unit ?? (a.goal > 1 ? 'vezes' : 'vez')}/dia
                 </span>
                 <span className="routine-foot tiny">
-                  {a.reminder && a.time && <Icon name="bell" size={12} />}
+                  {a.reminder && timesOf(a).length > 0 && <Icon name="bell" size={12} />}
                   {last ? `há ${fmtDuration(Date.now() - last.at)}` : 'sem registros'}
                 </span>
               </button>

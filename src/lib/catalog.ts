@@ -27,6 +27,7 @@ export interface Template {
   color: string;
   schedule: Schedule;
   time?: string;
+  times?: string[];
   goal: number;
   unit?: string;
   alertHours?: number;
@@ -41,6 +42,7 @@ export const TEMPLATES: Template[] = [
   { name: 'Atividade física', emoji: '🏋️', color: '#6be3a6', schedule: { kind: 'weekdays', days: [1, 3, 5] }, time: '07:00', goal: 1, unit: 'treino' },
   { name: 'Trabalho focado', emoji: '💼', color: '#ffc857', schedule: { kind: 'weekdays', days: [1, 2, 3, 4, 5] }, time: '09:00', goal: 1, unit: 'bloco' },
   { name: 'Remédio', emoji: '💊', color: '#ff7ce0', schedule: { kind: 'daily' }, time: '08:00', goal: 1, unit: 'dose' },
+  { name: 'Remédio 8 em 8h', emoji: '💊', color: '#ff7ce0', schedule: { kind: 'daily' }, time: '06:00', times: ['06:00', '14:00', '22:00'], goal: 3, unit: 'doses' },
   { name: 'Leitura', emoji: '📖', color: '#e8e8f0', schedule: { kind: 'daily' }, time: '21:30', goal: 1, unit: 'capítulo' },
   { name: 'Meditação', emoji: '🧘', color: '#8b7cff', schedule: { kind: 'daily' }, time: '07:30', goal: 1 },
 ];
@@ -53,6 +55,7 @@ export function fromTemplate(t: Template, id: string): Activity {
     color: t.color,
     schedule: t.schedule,
     time: t.time,
+    times: t.times,
     goal: t.goal,
     unit: t.unit,
     alertHours: t.alertHours,

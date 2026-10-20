@@ -4,6 +4,7 @@ import { store } from '../lib/storage';
 import { fmtTime, sameDay } from '../lib/date';
 import type { LogEntry } from '../lib/types';
 import { Icon } from './Icon';
+import { nextTimeFor, timesOf } from '../lib/times';
 
 interface Props {
   item: DayItem;
@@ -33,6 +34,8 @@ export function ActivityCard({ item, date, logs, onEdit }: Props) {
   const undo = () => last && store.removeLog(last.id);
 
   const single = goal === 1;
+  const times = timesOf(a);
+  const next = nextTimeFor(a, count);
   return (
     <div className={`act-card glass ${complete ? 'done' : ''}`} style={{ '--c': a.color, '--p': pct } as CSSProperties}>
       <div className="act-progress" />
@@ -42,9 +45,9 @@ export function ActivityCard({ item, date, logs, onEdit }: Props) {
       <div className="act-info" onClick={onEdit}>
         <div className="act-name">{a.name}</div>
         <div className="act-meta">
-          {a.time && (
+          {times.length > 0 && (
             <span>
-              <Icon name="clock" size={12} /> {a.time}
+              <Icon name="clock" size={12} /> {times.length > 1 ? (next && !complete ? `próximo ${next}` : times.join(' · ')) : times[0]}
             </span>
           )}
           {!single && (

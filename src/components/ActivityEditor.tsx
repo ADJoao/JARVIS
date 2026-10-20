@@ -3,6 +3,7 @@ import type { Activity, Schedule } from '../lib/types';
 import { COLORS, EMOJI_GROUPS, TEMPLATES, fromTemplate } from '../lib/catalog';
 import { dayKey, fmtDuration, fromKey, WEEKDAYS_SHORT } from '../lib/date';
 import { lastLog } from '../lib/stats';
+import { everyHours, normalizeTimes, timesLabel, timesOf } from '../lib/times';
 import { store, uid } from '../lib/storage';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
@@ -30,6 +31,27 @@ export function ActivityEditor({ activity, onClose }: Props) {
   const [group, setGroup] = useState(0);
   const [error, setError] = useState('');
   const set = (patch: Partial<Activity>) => setA((x) => ({ ...x, ...patch }));
+  // horários do dia; a meta acompanha a quantidade de horários (dá para ajustar depois)
+  const times = timesOf(a);
+  const setTimes = (next: string[], tidy = true) => {
+    const list = tidy ? normalizeTimes(next) : next;
+    setA((x) => {
+      const prev = timesOf(x).length;
+      const goal = x.goal === prev || x.goal < list.length ? Math.max(1, list.length) : x.goal;
+      const turnedOn = !prev && list.length ? { reminder: true } : {};
+      return { ...x, ...turnedOn, time: list[0], times: list.length ? list : undefined, goal, reminder: list.length ? (turnedOn.reminder ?? x.reminder) : false };
+    });
+  };
+  const addTime = () => {
+    if (!times.length) return setTimes(['08:00']);
+    // sugere o próximo horário repetindo o intervalo entre os dois últimos (ou +4h)
+    const toMin = (t: string) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+    const last = toMin(times[times.length - 1]);
+    const step = times.length > 1 ? last - toMin(times[times.length - 2]) : 240;
+    const m = (last + step) % 1440;
+    setTimes([...times, `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`]);
+  };
+
   // rascunho do campo de horas enquanto a pessoa digita (pode ficar vazio); null = mostra o valor salvo
   const [hoursDraft, setHoursDraft] = useState<string | null>(null);
   const hoursText = hoursDraft ?? String(a.alertHours ?? '');
@@ -65,7 +87,15 @@ export function ActivityEditor({ activity, onClose }: Props) {
       if (d.getTime() > Date.now() + 60_000) return setError('A "última vez" não pode ser no futuro.');
       lastAt = d.getTime();
     }
-    store.saveActivity({ ...a, name: a.name.trim(), goal: Math.max(1, Math.round(a.goal)), reminder: a.reminder && Boolean(a.time) });
+    const finalTimes = normalizeTimes(times);
+    store.saveActivity({
+      ...a,
+      name: a.name.trim(),
+      goal: Math.max(1, Math.round(a.goal)),
+      time: finalTimes[0],
+      times: finalTimes.length > 1 ? finalTimes : undefined,
+      reminder: a.reminder && finalTimes.length > 0,
+    });
     if (lastAt) store.addLog(a.id, lastAt);
     onClose();
   };
@@ -184,31 +214,61 @@ export function ActivityEditor({ activity, onClose }: Props) {
       )}
 
       {kind !== 'free' && (
-        <div className="row-2">
-          <div>
-            <label className="field-label">Horário</label>
-            <div className="input-with-btn">
-              <input type="time" className="input" value={a.time ?? ''} onChange={(e) => set({ time: e.target.value || undefined })} />
-              {a.time && (
-                <button className="icon-btn" onClick={() => set({ time: undefined, reminder: false })} aria-label="Sem horário">
+        <>
+          <label className="field-label">{times.length > 1 ? `Horários (${times.length} por dia)` : 'Horário'}</label>
+          <div className="times-list">
+            {times.map((t, i) => (
+              <div key={i} className="time-item">
+                <input
+                  type="time"
+                  className="input"
+                  value={t}
+                  aria-label={`Horário ${i + 1}`}
+                  onChange={(e) => e.target.value && setTimes(times.map((x, j) => (j === i ? e.target.value : x)), false)}
+                  onBlur={() => setTimes(times)}
+                />
+                <button className="icon-btn" onClick={() => setTimes(times.filter((_, j) => j !== i))} aria-label={`Remover horário ${t}`}>
                   <Icon name="x" size={18} />
                 </button>
-              )}
+              </div>
+            ))}
+            <button className="btn ghost add-time" onClick={addTime}>
+              <Icon name="plus" size={18} /> {times.length ? 'Adicionar outro horário' : 'Definir horário'}
+            </button>
+          </div>
+          <div className="repeat-row">
+            <span className="small muted">Repetir a cada</span>
+            <div className="chips wrap">
+              {[4, 6, 8, 12].map((h) => (
+                <button
+                  key={h}
+                  className={`chip ${times.length > 1 && everyHours(times[0], h).join() === times.join() ? 'on' : ''}`}
+                  onClick={() => setTimes(everyHours(times[0] ?? '08:00', h))}
+                >
+                  {h}h
+                </button>
+              ))}
             </div>
           </div>
-          <div>
-            <label className="field-label">Meta por dia</label>
-            <div className="stepper">
-              <button onClick={() => set({ goal: Math.max(1, a.goal - 1) })} aria-label="Menos">
-                <Icon name="minus" size={18} />
-              </button>
-              <span>{a.goal}</span>
-              <button onClick={() => set({ goal: Math.min(50, a.goal + 1) })} aria-label="Mais">
-                <Icon name="plus" size={18} />
-              </button>
-            </div>
+          <p className="tiny muted">
+            {times.length > 1
+              ? `Começando às ${times[0]}: ${timesLabel({ times })}. Para mudar o começo, troque o primeiro horário e toque de novo no intervalo.`
+              : 'Ex.: remédio de 8 em 8 horas: coloque o primeiro horário e toque em "8h".'}
+          </p>
+
+          <label className="field-label">Meta por dia</label>
+          <div className="stepper">
+            <button onClick={() => set({ goal: Math.max(1, a.goal - 1) })} aria-label="Menos">
+              <Icon name="minus" size={18} />
+            </button>
+            <span>
+              {a.goal} {a.goal === 1 ? 'vez' : 'vezes'}
+            </span>
+            <button onClick={() => set({ goal: Math.min(50, a.goal + 1) })} aria-label="Mais">
+              <Icon name="plus" size={18} />
+            </button>
           </div>
-        </div>
+        </>
       )}
 
       {kind !== 'free' && a.goal > 1 && (
@@ -217,10 +277,10 @@ export function ActivityEditor({ activity, onClose }: Props) {
 
       <div className="toggle-row">
         <div>
-          <strong>Lembrete no horário</strong>
-          <p className="muted small">{a.time ? `Notifica às ${a.time} (no app instalado).` : 'Defina um horário para ativar.'}</p>
+          <strong>{times.length > 1 ? 'Lembrete em cada horário' : 'Lembrete no horário'}</strong>
+          <p className="muted small">{times.length ? `Notifica às ${timesLabel({ times })}, no app instalado.` : 'Defina um horário para ativar.'}</p>
         </div>
-        <button className={`switch ${a.reminder && a.time ? 'on' : ''}`} disabled={!a.time} onClick={() => set({ reminder: !a.reminder })} aria-label="Lembrete" />
+        <button className={`switch ${a.reminder && times.length ? 'on' : ''}`} disabled={!times.length} onClick={() => set({ reminder: !a.reminder })} aria-label="Lembrete" />
       </div>
 
       <div className="toggle-row">

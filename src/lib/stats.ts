@@ -1,5 +1,6 @@
 import type { Activity, LogEntry, UserData } from './types';
 import { addDays, dayKey, fmtDuration, startOfDay, startOfWeek, timeToMinutes, weekDays, WEEKDAYS_LONG } from './date';
+import { timesLabel, timesOf } from './times';
 
 export function isActiveOn(a: Activity, date: Date): boolean {
   const day = startOfDay(date).getTime();
@@ -190,6 +191,7 @@ const EMOJI_TIPS: Record<string, string> = {
 
 function tipFor(a: Activity): string {
   if (EMOJI_TIPS[a.emoji]) return EMOJI_TIPS[a.emoji];
+  if (timesOf(a).length > 1) return `Você tem ${timesOf(a).length} horários (${timesLabel(a)}). Ative o lembrete em cada um e deixe tudo à mão para não esquecer.`;
   if (a.time) return `Tente mudar o horário das ${a.time} para um momento em que você esteja mais livre.`;
   return 'Defina um horário fixo e ative o lembrete — isso aumenta muito a chance de fazer.';
 }

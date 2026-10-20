@@ -1632,6 +1632,32 @@ textarea.input {
   gap: 2px;
 }
 
+/* ---------- vários horários ---------- */
+.times-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.time-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.time-item .input {
+  padding: 11px 10px;
+}
+.add-time {
+  padding: 11px 12px;
+  font-size: 14px;
+  border-style: dashed;
+}
+.repeat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 /* ---------- registros de uma atividade ---------- */
 .tracker {
   cursor: pointer;

@@ -3,6 +3,7 @@ import { store } from './storage';
 import { addDays, fmtDuration, fmtTime, greeting, startOfDay, WEEKDAYS_LONG } from './date';
 import { dayStats, grade, indexLogs, lastLog, streak, suggestions, weekStats } from './stats';
 import { scheduleLabel } from './catalog';
+import { nextTimeFor, timesLabel, timesOf } from './times';
 import { evaluateSleep, fmtHours, hoursOf, lastSleep, sleepSummaryText, sleepTips, sleepWeek } from './sleep';
 
 /** Remove acentos e deixa minúsculo para comparar texto. */
@@ -51,7 +52,7 @@ function todaySummary(data: UserData): string {
   const lines = s.items.map((i) => {
     const mark = i.complete ? '✅' : '⬜';
     const prog = i.goal > 1 ? ` (${i.count}/${i.goal})` : '';
-    return `${mark} ${i.activity.emoji} ${i.activity.name}${i.activity.time ? ` · ${i.activity.time}` : ''}${prog}`;
+    return `${mark} ${i.activity.emoji} ${i.activity.name}${timesOf(i.activity).length ? ` · ${timesLabel(i.activity)}` : ''}${prog}`;
   });
   return `Hoje você concluiu **${s.completed} de ${s.planned}** atividades (${pct(s.score)}).\n\n${lines.join('\n')}`;
 }
@@ -64,12 +65,12 @@ function remaining(data: UserData, a?: Activity): string {
     if (it.complete) return `${a.emoji} ${a.name} já está concluída hoje (${it.count}/${it.goal}). 👏`;
     const left = it.goal - it.count;
     const unit = a.unit ? ` ${a.unit}` : left === 1 ? ' vez' : ' vezes';
-    return `Faltam **${left}${unit}** de ${a.emoji} ${a.name} hoje (você está em ${it.count}/${it.goal}).${a.time ? ` Horário planejado: ${a.time}.` : ''}`;
+    return `Faltam **${left}${unit}** de ${a.emoji} ${a.name} hoje (você está em ${it.count}/${it.goal}).${nextTimeFor(a, it.count) ? ` Próximo horário: ${nextTimeFor(a, it.count)}.` : a.time ? ` Horário planejado: ${a.time}.` : ''}`;
   }
   const pending = s.items.filter((i) => i.scheduled && !i.complete);
   if (!pending.length) return s.planned ? 'Nada pendente! Você concluiu tudo que estava planejado para hoje. 🎉' : 'Você não tem atividades agendadas para hoje.';
   return `Faltam **${pending.length}** atividades hoje:\n\n${pending
-    .map((i) => `• ${i.activity.emoji} ${i.activity.name}${i.goal > 1 ? ` — faltam ${i.goal - i.count}` : ''}${i.activity.time ? ` (${i.activity.time})` : ''}`)
+    .map((i) => `• ${i.activity.emoji} ${i.activity.name}${i.goal > 1 ? ` — faltam ${i.goal - i.count}` : ''}${timesOf(i.activity).length ? ` (${nextTimeFor(i.activity, i.count) ?? timesLabel(i.activity)})` : ''}`)
     .join('\n')}`;
 }
 
@@ -102,7 +103,7 @@ function tomorrow(data: UserData): string {
   const items = s.items.filter((i) => i.scheduled);
   if (!items.length) return `Amanhã (${WEEKDAYS_LONG[d.getDay()]}) você não tem atividades agendadas.`;
   return `Amanhã (${WEEKDAYS_LONG[d.getDay()]}) você tem ${items.length} atividades:\n\n${items
-    .map((i) => `• ${i.activity.emoji} ${i.activity.name}${i.activity.time ? ` às ${i.activity.time}` : ''}`)
+    .map((i) => `• ${i.activity.emoji} ${i.activity.name}${timesOf(i.activity).length ? ` às ${timesLabel(i.activity)}` : ''}`)
     .join('\n')}`;
 }
 
@@ -210,7 +211,7 @@ export function contextForAi(data: UserData): string {
         nome: a.name,
         icone: a.emoji,
         agenda: scheduleLabel(a.schedule),
-        horario: a.time ?? null,
+        horarios: timesOf(a),
         meta_por_dia: `${a.goal}${a.unit ? ` ${a.unit}` : ''}`,
         alerta_horas_sem_registro: a.alertHours ?? null,
         ultimo_registro: last ? `${new Date(last.at).toLocaleString('pt-BR')} (há ${fmtDuration(now.getTime() - last.at)})` : 'nunca',

@@ -7,6 +7,7 @@ import { Sheet } from '../components/Sheet';
 import { Icon } from '../components/Icon';
 import { askConfirm } from '../components/Dialog';
 import { fmtHours } from '../lib/sleep';
+import { timesOf } from '../lib/times';
 import type { UserAccount } from '../lib/types';
 
 interface Props {
@@ -113,13 +114,13 @@ export function Settings({ user, onClose, onLogout }: Props) {
                 <span className="notif-emoji">{a.emoji}</span>
                 <span className="notif-name">{a.name}</span>
                 <div className="notif-toggles">
-                  {a.time && (
+                  {timesOf(a).length > 0 && (
                     <button
                       className={`mini-toggle ${a.reminder ? 'on' : ''}`}
                       title="Lembrete no horário"
                       onClick={() => store.saveActivity({ ...a, reminder: !a.reminder })}
                     >
-                      ⏰ {a.time}
+                      ⏰ {timesOf(a).length > 1 ? `${timesOf(a).length}x/dia` : a.time}
                     </button>
                   )}
                   {a.alertHours !== undefined && (
@@ -131,7 +132,7 @@ export function Settings({ user, onClose, onLogout }: Props) {
                       ⚠️ {a.alertHours}h sem
                     </button>
                   )}
-                  {!a.time && a.alertHours === undefined && <span className="tiny muted">sem notificação</span>}
+                  {!timesOf(a).length && a.alertHours === undefined && <span className="tiny muted">sem notificação</span>}
                 </div>
               </div>
             ))}

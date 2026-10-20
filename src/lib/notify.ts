@@ -2,6 +2,7 @@ import { Capacitor } from '@capacitor/core';
 import { LocalNotifications, type LocalNotificationSchema } from '@capacitor/local-notifications';
 import type { UserData } from './types';
 import { lastLog } from './stats';
+import { timesOf } from './times';
 
 export const isNative = () => Capacitor.isNativePlatform();
 
@@ -54,22 +55,31 @@ export async function rescheduleAll(data: UserData): Promise<void> {
 
     for (const a of data.activities) {
       if (a.archivedAt) continue;
-      if (a.reminder && a.time) {
-        const [hour, minute] = a.time.split(':').map(Number);
-        const body = discreet ? DISCREET_BODY : a.goal > 1 ? `Meta de hoje: ${a.goal}${a.unit ? ` ${a.unit}` : ''}.` : 'Hora da sua rotina!';
+      const times = timesOf(a);
+      if (a.reminder && times.length) {
         const title = discreet ? DISCREET_TITLE : `${a.emoji} ${a.name}`;
         const s = a.schedule;
-        if (s.kind === 'daily') {
-          list.push({ id: numId(a.id, 0), title, body, schedule: { on: { hour, minute }, allowWhileIdle: true } });
-        } else if (s.kind === 'weekdays') {
-          // Capacitor: 1 = domingo ... 7 = sábado
-          for (const d of s.days)
-            list.push({ id: numId(a.id, d + 1), title, body, schedule: { on: { weekday: d + 1, hour, minute }, allowWhileIdle: true } });
-        } else if (s.kind === 'once') {
-          const [y, m, d] = s.date.split('-').map(Number);
-          const at = new Date(y, m - 1, d, hour, minute);
-          if (at.getTime() > now) list.push({ id: numId(a.id, 9), title, body, schedule: { at, allowWhileIdle: true } });
-        }
+        times.forEach((t, ti) => {
+          const [hour, minute] = t.split(':').map(Number);
+          const body = discreet
+            ? DISCREET_BODY
+            : times.length > 1
+              ? `Horário ${ti + 1} de ${times.length} (${t}).`
+              : a.goal > 1
+                ? `Meta de hoje: ${a.goal}${a.unit ? ` ${a.unit}` : ''}.`
+                : 'Hora da sua rotina!';
+          if (s.kind === 'daily') {
+            list.push({ id: numId(a.id, 1000 + ti), title, body, schedule: { on: { hour, minute }, allowWhileIdle: true } });
+          } else if (s.kind === 'weekdays') {
+            // Capacitor: 1 = domingo ... 7 = sábado
+            for (const d of s.days)
+              list.push({ id: numId(a.id, 2000 + ti * 10 + d), title, body, schedule: { on: { weekday: d + 1, hour, minute }, allowWhileIdle: true } });
+          } else if (s.kind === 'once') {
+            const [y, m, d] = s.date.split('-').map(Number);
+            const at = new Date(y, m - 1, d, hour, minute);
+            if (at.getTime() > now) list.push({ id: numId(a.id, 3000 + ti), title, body, schedule: { at, allowWhileIdle: true } });
+          }
+        });
       }
       if (a.alertHours && a.alertNotify !== false) {
         const last = lastLog(data, a.id);
