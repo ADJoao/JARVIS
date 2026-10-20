@@ -1,5 +1,8 @@
 import type { Activity, LogEntry, MoneyTx, SleepEntry, UserAccount, UserData } from './types';
 import { DEFAULT_FINANCE } from './finance';
+import { DEFAULT_GAME } from './game';
+import { toBlocks } from './noteTemplates';
+import { dayKey } from './date';
 import { listUsers, login, register } from './auth';
 import { DEFAULT_SETTINGS } from './storage';
 
@@ -68,6 +71,62 @@ function demoData(): UserData {
     logs,
     sleep,
     finance: { ...DEFAULT_FINANCE(), txs, goal: 2000000, goalName: 'Meta do mês' },
+    notes: [
+      {
+        id: 'n1',
+        title: 'Simulado ENEM',
+        emoji: '📚',
+        category: 'estudo',
+        pinned: true,
+        remindDate: dayKey(new Date()),
+        createdAt: now - 5 * day,
+        updatedAt: now - day,
+        blocks: toBlocks(
+          [
+            { type: 'heading', text: 'Matemática' },
+            { type: 'check', text: 'Estatística', done: true },
+            { type: 'check', text: 'Progressão aritmética', done: true },
+            { type: 'check', text: 'Geometria plana' },
+            { type: 'heading', text: 'Biologia' },
+            { type: 'check', text: 'Citologia', done: true },
+            { type: 'check', text: 'Genética' },
+            { type: 'text', text: 'Revisar os exercícios que errei no último simulado.' },
+          ],
+          now - 2 * day,
+        ),
+      },
+      {
+        id: 'n2',
+        title: 'Notas do 2º trimestre',
+        emoji: '🎓',
+        category: 'estudo',
+        createdAt: now - 20 * day,
+        updatedAt: now - 3 * day,
+        blocks: toBlocks([
+          { type: 'grade', subject: 'Matemática', need: 6, got: 7.5, want: 8 },
+          { type: 'grade', subject: 'Português', need: 6, got: 8.5, want: 8 },
+          { type: 'grade', subject: 'Biologia', need: 6, got: 5, want: 8 },
+        ]),
+      },
+      {
+        id: 'n3',
+        title: 'Estudar tráfego (digital)',
+        emoji: '💻',
+        category: 'trabalho',
+        createdAt: now - 7 * day,
+        updatedAt: now - day,
+        blocks: toBlocks(
+          [
+            { type: 'check', text: 'Aula 1 — Fundamentos de tráfego pago', done: true },
+            { type: 'check', text: 'Aula 2 — Públicos e segmentação', done: true },
+            { type: 'check', text: 'Aula 3 — Criativos que convertem' },
+            { type: 'check', text: 'Criar a primeira campanha de teste' },
+          ],
+          now - day,
+        ),
+      },
+    ],
+    game: { ...DEFAULT_GAME(), redemptions: [{ id: 'red1', rewardId: 'r2', name: 'Tomar um sorvete', emoji: '🍦', cost: 200, message: 'Liberado!', at: now - 4 * day }] },
     chat: [],
     settings: { ...DEFAULT_SETTINGS, bedtimeReminder: true },
   };

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
-import type { Activity, Finance, LogEntry, MoneyTx, Settings, SleepEntry, UserData } from './types';
+import type { Activity, Finance, Game, LogEntry, MoneyTx, Note, Reward, Settings, SleepEntry, UserData } from './types';
+import { DEFAULT_GAME } from './game';
 import { DEFAULT_FINANCE, balance } from './finance';
 
 export const uid = () =>
@@ -24,8 +25,23 @@ const emptyData = (): UserData => ({
   chat: [],
   sleep: [],
   finance: DEFAULT_FINANCE(),
+  notes: [],
+  game: DEFAULT_GAME(),
   settings: { ...DEFAULT_SETTINGS },
 });
+
+/** Completa dados antigos/backup com os campos novos. */
+function migrate(parsed: Partial<UserData>): UserData {
+  const base = emptyData();
+  return {
+    ...base,
+    ...parsed,
+    finance: { ...DEFAULT_FINANCE(), ...parsed.finance },
+    notes: parsed.notes ?? [],
+    game: { ...DEFAULT_GAME(), ...parsed.game, xp: { ...DEFAULT_GAME().xp, ...parsed.game?.xp } },
+    settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
+  } as UserData;
+}
 
 const dataKey = (userId: string) => `jarvis.data.${userId}`;
 
@@ -43,12 +59,7 @@ class Store {
     try {
       const raw = localStorage.getItem(dataKey(userId));
       const parsed = raw ? (JSON.parse(raw) as UserData) : emptyData();
-      this.data = {
-        ...emptyData(),
-        ...parsed,
-        finance: { ...DEFAULT_FINANCE(), ...parsed.finance },
-        settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
-      };
+      this.data = migrate(parsed);
     } catch {
       this.data = emptyData();
     }
@@ -176,6 +187,48 @@ class Store {
     this.update((d) => ({ ...d, finance: { ...d.finance, ...patch } }));
   }
 
+  // ---- notas ----
+  saveNote(n: Note) {
+    const note = { ...n, updatedAt: Date.now() };
+    this.update((d) => ({
+      ...d,
+      notes: d.notes.some((x) => x.id === n.id) ? d.notes.map((x) => (x.id === n.id ? note : x)) : [note, ...d.notes],
+    }));
+  }
+
+  deleteNote(id: string) {
+    this.update((d) => ({ ...d, notes: d.notes.filter((n) => n.id !== id) }));
+  }
+
+  // ---- pontos e lojinha ----
+  setGame(patch: Partial<Game>) {
+    this.update((d) => ({ ...d, game: { ...d.game, ...patch } }));
+  }
+
+  saveReward(r: Reward) {
+    this.update((d) => ({
+      ...d,
+      game: {
+        ...d.game,
+        rewards: d.game.rewards.some((x) => x.id === r.id) ? d.game.rewards.map((x) => (x.id === r.id ? r : x)) : [...d.game.rewards, r],
+      },
+    }));
+  }
+
+  deleteReward(id: string) {
+    this.update((d) => ({ ...d, game: { ...d.game, rewards: d.game.rewards.filter((r) => r.id !== id) } }));
+  }
+
+  redeem(r: Reward) {
+    const red = { id: uid(), rewardId: r.id, name: r.name, emoji: r.emoji, cost: r.cost, message: r.message, at: Date.now() };
+    this.update((d) => ({ ...d, game: { ...d.game, redemptions: [...d.game.redemptions, red] } }));
+    return red;
+  }
+
+  undoRedeem(id: string) {
+    this.update((d) => ({ ...d, game: { ...d.game, redemptions: d.game.redemptions.filter((r) => r.id !== id) } }));
+  }
+
   setSettings(patch: Partial<Settings>) {
     this.update((d) => ({ ...d, settings: { ...d.settings, ...patch } }));
   }
@@ -188,12 +241,7 @@ class Store {
     const parsed = JSON.parse(json) as UserData;
     if (!Array.isArray(parsed.activities) || !Array.isArray(parsed.logs))
       throw new Error('Arquivo de backup inválido.');
-    this.update(() => ({
-      ...emptyData(),
-      ...parsed,
-      finance: { ...DEFAULT_FINANCE(), ...parsed.finance },
-      settings: { ...DEFAULT_SETTINGS, ...parsed.settings },
-    }));
+    this.update(() => migrate(parsed));
   }
 }
 

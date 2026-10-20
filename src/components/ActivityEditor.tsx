@@ -3,8 +3,9 @@ import type { Activity, Schedule } from '../lib/types';
 import { COLORS, EMOJI_GROUPS, TEMPLATES, fromTemplate } from '../lib/catalog';
 import { dayKey, fmtDuration, fromKey, WEEKDAYS_SHORT } from '../lib/date';
 import { lastLog } from '../lib/stats';
+import { CATEGORIES, activityCategory } from '../lib/game';
 import { everyHours, normalizeTimes, timesLabel, timesOf } from '../lib/times';
-import { store, uid } from '../lib/storage';
+import { store, uid, useData } from '../lib/storage';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
 import { askConfirm } from './Dialog';
@@ -31,6 +32,7 @@ export function ActivityEditor({ activity, onClose }: Props) {
   const [group, setGroup] = useState(0);
   const [error, setError] = useState('');
   const set = (patch: Partial<Activity>) => setA((x) => ({ ...x, ...patch }));
+  const game = useData().game;
   // horários do dia; a meta acompanha a quantidade de horários (dá para ajustar depois)
   const times = timesOf(a);
   const setTimes = (next: string[], tidy = true) => {
@@ -176,6 +178,19 @@ export function ActivityEditor({ activity, onClose }: Props) {
           />
         ))}
       </div>
+
+      <label className="field-label">Tipo (quanto vale em pontos)</label>
+      <div className="chips wrap">
+        {CATEGORIES.filter((c) => c.id !== 'financas').map((c) => (
+          <button key={c.id} className={`chip ${activityCategory(a) === c.id ? 'on' : ''}`} onClick={() => set({ category: c.id })}>
+            {c.emoji} {c.name} <span className="xp-text">+{game.xp[c.id]}</span>
+          </button>
+        ))}
+      </div>
+      <p className="tiny muted">
+        Cada vez que você registrar ganha +{game.xp[activityCategory(a)]} XP
+        {a.goal > 1 ? ` (até ${a.goal}x por dia = ${game.xp[activityCategory(a)] * a.goal} XP)` : ''}.
+      </p>
 
       <label className="field-label">Quando</label>
       <div className="segmented">

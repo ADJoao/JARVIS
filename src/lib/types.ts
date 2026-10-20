@@ -4,6 +4,9 @@ export type Schedule =
   | { kind: 'once'; date: string } // AAAA-MM-DD
   | { kind: 'free' }; // sem agenda: só registro (ex.: "quanto tempo sem...")
 
+/** Tipo (ramo) de uma atividade ou nota; cada tipo vale uma quantidade de XP. */
+export type CategoryId = 'cuidado' | 'saude' | 'estudo' | 'trabalho' | 'financas' | 'casa' | 'lazer' | 'outro';
+
 export interface Activity {
   id: string;
   name: string;
@@ -22,6 +25,8 @@ export interface Activity {
   /** Se o alerta de "X horas sem" também vira notificação no celular (padrão: sim). */
   alertNotify?: boolean;
   reminder: boolean;
+  /** Tipo da atividade (define quantos pontos vale). Sem tipo = deduzido pelo ícone. */
+  category?: CategoryId;
   notes?: string;
   createdAt: number;
   archivedAt?: number;
@@ -77,6 +82,58 @@ export interface Finance {
   incomeTitle: string;
 }
 
+// ---- notas (bloco de notas com quadradinhos) ----
+export type NoteBlock =
+  | { id: string; type: 'heading'; text: string }
+  | { id: string; type: 'check'; text: string; doneAt?: number }
+  | { id: string; type: 'text'; text: string }
+  | { id: string; type: 'grade'; subject: string; need?: number; got?: number; want?: number };
+
+export interface Note {
+  id: string;
+  title: string;
+  emoji: string;
+  category: CategoryId;
+  blocks: NoteBlock[];
+  createdAt: number;
+  updatedAt: number;
+  pinned?: boolean;
+  /** Lembrete no dia (AAAA-MM-DD) e horário opcional (HH:MM). */
+  remindDate?: string;
+  remindTime?: string;
+}
+
+// ---- pontos, nível e lojinha ----
+export interface Reward {
+  id: string;
+  name: string;
+  emoji: string;
+  cost: number;
+  /** Mensagem ao trocar (ex.: "Você está liberado para comprar um jogo!"). */
+  message: string;
+}
+
+export interface Redemption {
+  id: string;
+  rewardId: string;
+  name: string;
+  emoji: string;
+  cost: number;
+  message: string;
+  at: number;
+}
+
+export interface Game {
+  /** XP ganho por conclusão, por tipo. */
+  xp: Record<CategoryId, number>;
+  /** XP por noite de sono no ideal (7–9h). */
+  sleepXp: number;
+  rewards: Reward[];
+  redemptions: Redemption[];
+  /** Último nível já comemorado (0 = ainda não inicializado). */
+  seenLevel: number;
+}
+
 export interface ChatMsg {
   id: string;
   role: 'user' | 'assistant';
@@ -111,6 +168,8 @@ export interface UserData {
   /** Se está dormindo agora: desde quando ("Vou dormir" foi tocado). */
   sleepingSince?: number;
   finance: Finance;
+  notes: Note[];
+  game: Game;
   settings: Settings;
 }
 

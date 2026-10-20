@@ -7,6 +7,8 @@ import { Icon } from '../components/Icon';
 import { ActivityCard } from '../components/ActivityCard';
 import { SleepCard } from '../components/SleepCard';
 import { balance, goalProgress, moneyOrHidden } from '../lib/finance';
+import { levelInfo, noteProgress, xpSummary } from '../lib/game';
+import { notesForToday } from './Notes';
 import type { Activity } from '../lib/types';
 
 interface Props {
@@ -17,6 +19,9 @@ interface Props {
   onLogs: (activityId: string) => void;
   onCalendar: () => void;
   onFinance: () => void;
+  onRoutines: () => void;
+  onProgress: () => void;
+  onNote: (id: string) => void;
 }
 
 function useNow(ms = 30_000) {
@@ -28,7 +33,7 @@ function useNow(ms = 30_000) {
   return now;
 }
 
-export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalendar, onFinance }: Props) {
+export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalendar, onFinance, onRoutines, onProgress, onNote }: Props) {
   const data = useData();
   const now = useNow();
   const [selected, setSelected] = useState(() => startOfDay(new Date()));
@@ -39,6 +44,10 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalenda
     return Array.from({ length: 7 }, (_, i) => dayStats(data, addDays(s, i), idx));
   }, [data, idx]);
   const fire = useMemo(() => streak(data, idx), [data, idx]);
+
+  const xp = useMemo(() => xpSummary(data), [data]);
+  const lv = levelInfo(xp.total);
+  const todayNotes = notesForToday(data.notes);
 
   const trackers = data.activities.filter((a) => !a.archivedAt && (a.alertHours || a.schedule.kind === 'free'));
   const isToday = sameDay(selected, new Date());
@@ -52,6 +61,12 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalenda
           <h1>
             {greeting()}, <span className="grad-text">{first}</span>
           </h1>
+          <button className="level-chip" onClick={onProgress} aria-label="Ver nível e pontos">
+            🏅 Nível {lv.level} · <span className="xp-text">⭐ {xp.points.toLocaleString('pt-BR')} pts</span>
+            <span className="level-chip-bar">
+              <span style={{ width: `${lv.ratio * 100}%` }} />
+            </span>
+          </button>
         </div>
         <div className="row">
           <button className="icon-btn glass" onClick={onCalendar} aria-label="Abrir agenda do mês">
@@ -144,7 +159,42 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalenda
         </>
       )}
 
-      <h3 className="section-title">{isToday ? 'Sua rotina de hoje' : `Rotina de ${fmtLongDate(selected)}`}</h3>
+      {isToday && todayNotes.length > 0 && (
+        <>
+          <h3 className="section-title">📝 Notas para hoje</h3>
+          <div className="stack">
+            {todayNotes.map((n) => {
+              const p = noteProgress(n);
+              return (
+                <button key={n.id} className="note-card glass" onClick={() => onNote(n.id)}>
+                  <span className="note-emoji">{n.emoji}</span>
+                  <span className="note-main">
+                    <span className="note-title">{n.title || 'Sem título'}</span>
+                    {p.total > 0 && (
+                      <>
+                        <span className="tiny muted">
+                          {p.done}/{p.total} concluídos
+                        </span>
+                        <span className="meter note-meter">
+                          <span style={{ width: `${(p.done / p.total) * 100}%` }} />
+                        </span>
+                      </>
+                    )}
+                  </span>
+                  <Icon name="right" size={18} />
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      <div className="section-head">
+        <h3 className="section-title">{isToday ? 'Sua rotina de hoje' : `Rotina de ${fmtLongDate(selected)}`}</h3>
+        <button className="link-btn" onClick={onRoutines}>
+          Todas as rotinas <Icon name="right" size={14} />
+        </button>
+      </div>
       {day.items.length === 0 ? (
         <div className="empty glass">
           <div className="empty-emoji">🌤️</div>

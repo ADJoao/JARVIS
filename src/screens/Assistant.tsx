@@ -13,6 +13,8 @@ const QUICK = [
   'Como está meu sono?',
   'Quanto eu tenho?',
   'Me motiva!',
+  'Quantos pontos eu tenho?',
+  'O que falta estudar?',
   'Quanto tempo sem ir ao banheiro?',
   'O que tenho amanhã?',
 ];

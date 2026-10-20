@@ -7,7 +7,7 @@ import { Icon } from '../components/Icon';
 import { timesLabel, timesOf } from '../lib/times';
 import type { Activity } from '../lib/types';
 
-export function Activities({ onEdit }: { onEdit: (a?: Activity) => void }) {
+export function Activities({ onEdit, onBack }: { onEdit: (a?: Activity) => void; onBack: () => void }) {
   const data = useData();
   const [showArchived, setShowArchived] = useState(false);
   const active = data.activities.filter((a) => !a.archivedAt);
@@ -17,9 +17,14 @@ export function Activities({ onEdit }: { onEdit: (a?: Activity) => void }) {
   return (
     <div className="screen">
       <header className="top">
-        <div>
+        <div className="row">
+          <button className="icon-btn glass" onClick={onBack} aria-label="Voltar para Hoje">
+            <Icon name="left" />
+          </button>
+          <div>
           <h1>Rotinas</h1>
           <p className="muted small">{active.length} ativas · toque para editar</p>
+          </div>
         </div>
       </header>
 

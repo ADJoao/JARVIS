@@ -5,6 +5,7 @@ import { dayStats, grade, indexLogs, lastLog, streak, suggestions, weekStats } f
 import { scheduleLabel } from './catalog';
 import { balance, financeSummary, goalProgress, money, parseMoney, progressText, randomPhrase } from './finance';
 import { notifyIncome } from './notify';
+import { categoryOf, levelInfo, noteProgress, xpSummary } from './game';
 import { nextTimeFor, timesLabel, timesOf } from './times';
 import { evaluateSleep, fmtHours, hoursOf, lastSleep, sleepSummaryText, sleepTips, sleepWeek } from './sleep';
 
@@ -121,7 +122,8 @@ const HELP = `Posso te ajudar com coisas como:
 • "Quanto eu dormi?" / "Como está meu sono?"
 • "Vou dormir" / "Acordei"
 • "Recebi 500 do cliente" / "Gastei 80 no mercado"
-• "Quanto eu tenho?" / "Como está minha meta?"`;
+• "Quanto eu tenho?" / "Como está minha meta?"
+• "Quantos pontos eu tenho?" / "O que falta estudar?"`;
 
 /** Assistente local: funciona offline e de graça, entendendo perguntas comuns. */
 export function localAnswer(text: string): { text: string; understood: boolean; action?: boolean } {
@@ -159,6 +161,35 @@ export function localAnswer(text: string): { text: string; understood: boolean; 
   }
   if (has(t, /(saldo|quanto (eu )?tenho|dinheiro|faturamento|faturei|grana|minha meta|da meta|financ)/)) return { text: financeSummary(data), understood: true };
   if (has(t, /(motiva|frase|animo|desanimad)/)) return { text: `${randomPhrase(data.finance)} 🔥`, understood: true };
+
+  // ---- pontos, nível e loja ----
+  if (has(t, /(ponto|nivel|\bxp\b|level|recompensa|loja|trocar)/)) {
+    const xp = xpSummary(data);
+    const lv = levelInfo(xp.total);
+    const can = data.game.rewards.filter((r) => r.cost <= xp.points);
+    const next = [...data.game.rewards].filter((r) => r.cost > xp.points).sort((a, b) => a.cost - b.cost)[0];
+    return {
+      text: `🏅 Você está no **nível ${lv.level}** (${lv.title}) com ${xp.total.toLocaleString('pt-BR')} XP. Faltam ${lv.toNext.toLocaleString('pt-BR')} XP para o nível ${lv.level + 1}.\n⭐ Pontos para trocar: **${xp.points.toLocaleString('pt-BR')}**.${
+        can.length ? `\n\nJá dá para trocar: ${can.map((r) => `${r.emoji} ${r.name}`).join(', ')}.` : ''
+      }${next ? `\nPróxima recompensa: ${next.emoji} ${next.name} (faltam ${(next.cost - xp.points).toLocaleString('pt-BR')} pontos).` : ''}`,
+      understood: true,
+    };
+  }
+
+  // ---- notas ----
+  if (has(t, /(nota|anotac|prova|simulado|materia|estudar|tarefas pendentes)/) && data.notes.length) {
+    const pending = data.notes
+      .map((n) => ({ n, p: noteProgress(n), left: n.blocks.filter((b) => b.type === 'check' && !b.doneAt && b.text.trim()) }))
+      .filter((x) => x.left.length);
+    if (!pending.length) return { text: 'Todas as tarefas das suas notas estão concluídas! 🏆', understood: true };
+    return {
+      text: `📝 O que ainda falta nas suas notas:\n\n${pending
+        .slice(0, 5)
+        .map(({ n, p, left }) => `**${n.emoji} ${n.title || 'Sem título'}** (${p.done}/${p.total}, ${categoryOf(n.category).name})\n${left.slice(0, 5).map((b) => `• ${b.type === 'check' ? b.text : ''}`).join('\n')}`)
+        .join('\n\n')}`,
+      understood: true,
+    };
+  }
 
   // ---- sono ----
   if (has(t, /^(vou|indo) (dormir|deitar)|boa noite,? (vou|to indo)/)) {
@@ -268,6 +299,22 @@ export function contextForAi(data: UserData): string {
       },
       semana_passada: { concluidas: prev.completed, planejadas: prev.planned, aproveitamento: pct(prev.score) },
       sequencia_dias_bons: streak(data, idx),
+      progresso: (() => {
+        const xp = xpSummary(data);
+        const lv = levelInfo(xp.total);
+        return { nivel: lv.level, titulo: lv.title, xp_total: xp.total, xp_para_proximo_nivel: lv.toNext, pontos_para_trocar: xp.points, recompensas: data.game.rewards.map((r) => ({ nome: r.name, custo: r.cost })) };
+      })(),
+      notas: data.notes.slice(0, 10).map((n) => {
+        const p = noteProgress(n);
+        return {
+          titulo: n.title,
+          tipo: categoryOf(n.category).name,
+          concluidos: `${p.done}/${p.total}`,
+          pendentes: n.blocks.filter((b) => b.type === 'check' && !b.doneAt).map((b) => (b.type === 'check' ? b.text : '')).slice(0, 8),
+          notas_de_prova: n.blocks.filter((b) => b.type === 'grade').map((b) => (b.type === 'grade' ? { materia: b.subject, preciso: b.need ?? null, tirei: b.got ?? null, quero: b.want ?? null } : null)),
+          lembrete: n.remindDate ?? null,
+        };
+      }),
       financas: (() => {
         const f = data.finance;
         const p = goalProgress(f);

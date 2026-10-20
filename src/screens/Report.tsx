@@ -8,7 +8,7 @@ import { evaluateSleep, fmtHours, sleepWeek } from '../lib/sleep';
 
 const TONE_COLOR = { good: 'var(--good)', ok: 'var(--accent)', warn: 'var(--warn)', bad: 'var(--bad)' } as const;
 
-export function Report() {
+export function Report({ embedded = false }: { embedded?: boolean }) {
   const data = useData();
   const [offset, setOffset] = useState(0);
   const idx = useMemo(() => indexLogs(data.logs), [data.logs]);
@@ -27,10 +27,10 @@ export function Report() {
   const end = addDays(w.start, 6);
 
   return (
-    <div className="screen">
+    <div className={embedded ? 'stack-lg' : 'screen'}>
       <header className="top">
         <div>
-          <h1>Relatório semanal</h1>
+          {embedded ? <h2>Relatório semanal</h2> : <h1>Relatório semanal</h1>}
           <p className="muted small">
             {fmtDayMonth(w.start)} – {fmtDayMonth(end)}
             {offset === 0 ? ' · esta semana' : offset === -1 ? ' · semana passada' : ''}

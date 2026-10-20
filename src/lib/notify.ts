@@ -79,6 +79,22 @@ export async function rescheduleAll(data: UserData): Promise<void> {
       );
     }
 
+    // lembretes de notas ("lembrar no dia")
+    for (const n of data.notes) {
+      if (!n.remindDate) continue;
+      const [y, m, d] = n.remindDate.split('-').map(Number);
+      const [hour, minute] = (n.remindTime || '09:00').split(':').map(Number);
+      const at = new Date(y, m - 1, d, hour, minute);
+      if (at.getTime() <= now) continue;
+      const left = n.blocks.filter((b) => b.type === 'check' && !b.doneAt).length;
+      list.push({
+        id: numId(n.id, 60),
+        title: discreet ? DISCREET_TITLE : `${n.emoji} ${n.title || 'Nota'}`,
+        body: discreet ? DISCREET_BODY : left ? `Você tem ${left} ${left === 1 ? 'tarefa pendente' : 'tarefas pendentes'} nessa nota.` : 'Lembrete da sua nota.',
+        schedule: { at, allowWhileIdle: true },
+      });
+    }
+
     for (const a of data.activities) {
       if (a.archivedAt) continue;
       const times = timesOf(a);
