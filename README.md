@@ -10,10 +10,12 @@ Seu app pessoal para organizar a rotina: atividades, agenda, relatório semanal 
 - **Agenda**: calendário mensal. A cor de cada dia mostra quanto você cumpriu. Tocando num dia passado você ainda pode marcar o que esqueceu.
 - **Rotinas**: crie e edite atividades com ícone (emoji) e cor do seu jeito, agenda (todo dia, dias da semana, uma vez ou livre), horário, meta por dia, lembrete e alerta de "X horas sem fazer". Já vem com modelos prontos (banheiro, água, refeições, estudos, treino, trabalho, remédio, sono, leitura, meditação).
 - **Relatório semanal**: "8 de 10 concluídas", nota (Excelente / Muito bom / Regular / Precisa melhorar), comparação com a semana anterior, gráfico por dia, desempenho por atividade e dicas do que melhorar.
-- **Assistente JARVIS**: pergunte "o que eu tenho hoje?", "quanto falta para terminar a água?", "quanto tempo estou sem ir ao banheiro?", "como está meu desempenho?", "o que devo melhorar?". Ele também registra coisas quando você escreve "bebi água" ou "fui ao banheiro". Funciona **offline e de graça**.
+- **Assistente JARVIS**: pergunte "o que eu tenho hoje?", "quanto falta para terminar a água?", "quanto tempo estou sem ir ao banheiro?", "como está meu desempenho?", "o que devo melhorar?", "quanto eu dormi?". Ele também registra coisas quando você escreve "bebi água" ou "fui ao banheiro". Funciona **offline e de graça**.
   - Opcional: em **Ajustes**, ative o **Claude** com a sua chave de API ([console.anthropic.com](https://console.anthropic.com)) para conversar sobre qualquer assunto. A Anthropic cobra o uso da API conforme o consumo.
-- **Lembretes** (no app Android): notificação no horário de cada rotina e alerta quando passar muitas horas sem registrar.
-- **Ajustes**: 6 papéis de parede, backup (exportar/importar), trocar senha, sair e excluir conta.
+- **Sono**: toque em "Vou dormir" ao deitar e "Acordei" ao levantar (ou adicione a noite manualmente). O JARVIS diz se a quantidade foi boa ou ruim (o recomendado para adultos é de 7 a 9 horas), pergunta como você acordou e mostra a semana: média, noites no ideal, quanto faltou para a sua meta, horário médio de dormir e acordar, e dicas.
+- **Notificações sob controle** (no app Android): lembrete no horário de cada rotina, alerta de "X horas sem fazer" e lembrete de hora de dormir. Em **Ajustes → Notificações** você liga e desliga cada uma separadamente. O **modo discreto** faz a notificação mostrar só "JARVIS: você tem um lembrete", sem dizer qual atividade é. O alerta do banheiro já vem **desligado** (aparece só dentro do app).
+- **Demonstração**: na tela de login, "Ver demonstração" abre uma conta de exemplo já preenchida para você explorar.
+- **Ajustes**: notificações, meta e horário de sono, 6 papéis de parede, backup (exportar/importar), trocar senha, sair e excluir conta.
 
 ## Como instalar no celular (Android), de graça
 
