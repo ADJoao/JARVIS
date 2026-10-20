@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b",
     "icons": "node scripts/make-icons.mjs",
-    "android:sync": "npm run build && npx cap sync android"
+    "android:sync": "npm run build && npx cap sync android",
+    "icons:android": "npm run icons && npx @capacitor/assets generate --android --iconBackgroundColor '#060a2a' --splashBackgroundColor '#060a2a' && node scripts/compress-splash.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.136.0",

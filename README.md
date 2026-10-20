@@ -38,7 +38,7 @@ Em **Settings → Pages**, escolha *Source: GitHub Actions* e rode o workflow **
 npm install
 npm run dev            # abre em http://localhost:5173
 npm run build          # gera a versão web em dist/
-npm run icons          # regera os ícones a partir de scripts/make-icons.mjs
+npm run icons:android  # regera ícones e splash a partir de assets/logo-source.webp
 npm run android:sync   # build + copia para o projeto Android (android/)
 ```
 
