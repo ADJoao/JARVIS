@@ -154,6 +154,10 @@ export interface Settings {
   apiKey: string;
   model: AiModel;
   notifications: boolean;
+  /** Esconde o aviso "Ativar a conversa inteligente" no chat. */
+  aiBannerHidden?: boolean;
+  /** Como o JARVIS chama o usuário (ex.: "me chama de Jão"). */
+  nickname?: string;
   /** O JARVIS lê as respostas em voz alta. */
   voiceReplies: boolean;
   /** Notificações sem nome/ícone da atividade (privacidade). */

@@ -3,6 +3,7 @@ import { store } from './storage';
 import { addDays, fmtDuration, fmtTime, greeting, startOfDay, WEEKDAYS_LONG } from './date';
 import { dayStats, grade, indexLogs, lastLog, streak, suggestions, weekStats } from './stats';
 import { scheduleLabel } from './catalog';
+import { fallbackReply, smallTalk } from './smalltalk';
 import { balance, financeSummary, goalProgress, money, parseMoney, progressText, randomPhrase } from './finance';
 import { notifyIncome } from './notify';
 import { categoryOf, levelInfo, noteProgress, xpSummary } from './game';
@@ -126,7 +127,7 @@ const HELP = `Posso te ajudar com coisas como:
 • "Quantos pontos eu tenho?" / "O que falta estudar?"`;
 
 /** Assistente local: funciona offline e de graça, entendendo perguntas comuns. */
-export function localAnswer(raw: string): { text: string; understood: boolean; action?: boolean } {
+export function localAnswer(raw: string, userName = ''): { text: string; understood: boolean; action?: boolean } {
   const data = store.get();
   // "Jarvis, bebi água" → "bebi água" (chamar pelo nome não é um cumprimento)
   const text = raw.replace(/^\s*((ei|e ai|e aí|oi|olá|ola|fala)[\s,]+)?jarvis\b[\s,!.:;-]*/i, '').trim();
@@ -136,6 +137,10 @@ export function localAnswer(raw: string): { text: string; understood: boolean; a
   }
   const t = norm(text);
   const act = matchActivity(data, text);
+
+  // segurança, lembretes, anotações e planos vêm antes de tudo
+  const first = smallTalk(text, t, data, userName, 'priority');
+  if (first) return { text: first.text, understood: true, action: first.action };
 
   // ---- dinheiro ----
   const moneyVerb = /(recebi|entrou|ganhei|vendi|faturei|caiu|gastei|paguei|saiu|comprei)/.exec(t);
@@ -165,8 +170,8 @@ export function localAnswer(raw: string): { text: string; understood: boolean; a
       };
     }
   }
-  if (has(t, /(saldo|quanto (eu )?tenho|dinheiro|faturamento|faturei|grana|minha meta|da meta|financ)/)) return { text: financeSummary(data), understood: true };
-  if (has(t, /(motiva|frase|animo|desanimad)/)) return { text: `${randomPhrase(data.finance)} 🔥`, understood: true };
+  if (has(t, /(saldo|quanto (eu )?tenho|dinheiro|faturamento|faturei|grana|minha meta|da meta|financ)/) && !has(t, /(dica|economizar|guardar|juntar|investir)/))
+    return { text: financeSummary(data), understood: true };
 
   // ---- pontos, nível e loja ----
   if (has(t, /(ponto|nivel|\bxp\b|level|recompensa|loja|trocar)/)) {
@@ -204,6 +209,10 @@ export function localAnswer(raw: string): { text: string; understood: boolean; a
   }
   if (has(t, /^(acordei|bom dia,? acordei|levantei)/)) {
     const since = data.sleepingSince;
+    if (since && Date.now() - since < 30 * 60_000) {
+      store.cancelSleep();
+      return { text: `Você marcou que foi dormir há só ${Math.max(1, Math.round((Date.now() - since) / 60_000))} min, então cancelei esse registro. Se dormiu de verdade, adicione a noite no cartão de sono.`, understood: true, action: true };
+    }
     if (!since) return { text: 'Não encontrei um "Vou dormir" marcado. Você pode adicionar a noite manualmente no cartão de sono da tela Hoje.', understood: true, action: true };
     const e = store.addSleep(since, Date.now());
     if (!e) store.cancelSleep();
@@ -211,7 +220,7 @@ export function localAnswer(raw: string): { text: string; understood: boolean; a
     const v = evaluateSleep(hoursOf(e), data.settings.sleepGoal);
     return { text: `Bom dia! ☀️ Você dormiu **${fmtHours(hoursOf(e))}** (${fmtTime(e.start)} → ${fmtTime(e.end)}): ${v.emoji} **${v.label}**.\n\n${v.message}`, understood: true, action: true };
   }
-  if (has(t, /(sono|dormi|dormir|dormindo|cansad|insonia)/)) {
+  if (has(t, /(sono|dormi|dormir|dormindo|insonia)/) && !has(t, /\b(to|estou|tô)\b.*\b(com sono|cansad)/)) {
     const wantsTips = has(t, /(melhorar|dica|como (eu )?(posso|faco)|ajuda|conselho)/);
     const w = sleepWeek(data, new Date());
     if (wantsTips || !lastSleep(data))
@@ -230,12 +239,16 @@ export function localAnswer(raw: string): { text: string; understood: boolean; a
     return { text: `Registrado! ${act.emoji} ${act.name} às ${fmtTime(Date.now())}.${prog}`, understood: true, action: true };
   }
 
+  const chat = smallTalk(text, t, data, userName, 'rest');
+  if (chat) return { text: chat.text, understood: true, action: chat.action };
+
   if (has(t, /(quanto falta|falta quanto|faltam|o que falta|pendente|falta pra|falta para|terminar)/))
     return { text: remaining(data, act), understood: true };
 
   if (has(t, /amanha/)) return { text: tomorrow(data), understood: true };
 
-  if (has(t, /(hoje|agenda|o que (eu )?tenho|minhas atividades|meu dia)/)) return { text: todaySummary(data), understood: true };
+  if (has(t, /(o que (eu )?tenho|agenda|minhas atividades|atividades de hoje|tarefas de hoje|rotina de hoje|como (esta|ta) (o )?meu dia|^hoje\??$)/))
+    return { text: todaySummary(data), understood: true };
 
   if (has(t, /(sequencia|streak|seguidos|seguidas)/)) {
     const n = streak(data);
@@ -265,10 +278,7 @@ export function localAnswer(raw: string): { text: string; understood: boolean; a
 
   if (has(t, /(ajuda|o que voce faz|comandos|help)/)) return { text: HELP, understood: true };
 
-  return {
-    text: `No modo básico eu só entendo alguns comandos prontos, então não sei responder isso. 🤔\n\nPara conversar comigo sobre **qualquer assunto** (como o JARVIS do Tony Stark), ative a **conversa inteligente** em Ajustes.\n\n${HELP}`,
-    understood: false,
-  };
+  return { text: fallbackReply(text, data), understood: false };
 }
 
 /** Resumo dos dados para o assistente com IA (Claude). */

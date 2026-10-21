@@ -1434,6 +1434,15 @@ textarea.input {
 }
 
 /* ---------- conversa por voz e IA ---------- */
+.ideas-chip {
+  background: rgba(255, 200, 87, 0.16);
+  border-color: rgba(255, 200, 87, 0.45);
+  font-weight: 700;
+}
+.ideas-group {
+  display: grid;
+  gap: 8px;
+}
 .steps {
   margin: 0;
   padding-left: 22px;
@@ -1471,11 +1480,17 @@ code {
 }
 .ai-banner {
   display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 12px 6px 12px 14px;
+  border-color: rgba(178, 140, 255, 0.45);
+}
+.ai-banner-main {
+  flex: 1;
+  display: flex;
   align-items: center;
   gap: 12px;
-  padding: 14px;
   text-align: left;
-  border-color: rgba(178, 140, 255, 0.45);
 }
 .ai-banner-icon {
   font-size: 28px;

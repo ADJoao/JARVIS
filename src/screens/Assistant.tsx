@@ -4,20 +4,54 @@ import { localAnswer } from '../lib/assistant';
 import { canListen, listen, speak, stopSpeaking } from '../lib/voice';
 import { Icon } from '../components/Icon';
 import { askConfirm } from '../components/Dialog';
+import { Sheet } from '../components/Sheet';
 import type { ChatMsg } from '../lib/types';
 
 const QUICK = [
+  'O que eu faço agora?',
   'O que eu tenho hoje?',
   'Quanto falta hoje?',
   'Como está meu desempenho?',
-  'O que devo melhorar?',
-  'Como está meu sono?',
-  'Quanto eu tenho?',
   'Me motiva!',
+  'Quanto eu tenho?',
   'Quantos pontos eu tenho?',
-  'O que falta estudar?',
-  'Quanto tempo sem ir ao banheiro?',
-  'O que tenho amanhã?',
+  'Como está meu sono?',
+];
+
+/** Mensagens prontas do botão "Ideias" (todas funcionam no modo básico, grátis). */
+const IDEAS: { group: string; items: string[] }[] = [
+  {
+    group: '📋 Rotina',
+    items: ['O que eu faço agora?', 'O que eu tenho hoje?', 'O que tenho amanhã?', 'Quanto falta hoje?', 'Resumo do dia', 'Bebi água', 'Fui ao banheiro', 'Quanto tempo sem ir ao banheiro?', 'Quantos dias seguidos eu tenho?'],
+  },
+  {
+    group: '📈 Desempenho',
+    items: ['Como está meu desempenho?', 'O que devo melhorar?', 'Quantos pontos eu tenho?', 'Qual meu nível?'],
+  },
+  {
+    group: '💰 Dinheiro',
+    items: ['Quanto eu tenho?', 'Como está minha meta?', 'Recebi 500 do cliente', 'Gastei 30 no lanche', 'Vou vender um site e acho que lucro 1000', 'Dica de dinheiro'],
+  },
+  {
+    group: '📝 Notas e lembretes',
+    items: ['O que falta estudar?', 'Anota comprar pão', 'Me lembra de ligar pro João às 15h', 'Me lembra de estudar amanhã às 19h', 'Dica de estudo'],
+  },
+  {
+    group: '😴 Sono e saúde',
+    items: ['Vou dormir', 'Acordei', 'Quanto eu dormi?', 'Como melhorar meu sono?', 'Tô cansado', 'Tô com fome', 'Dica de saúde'],
+  },
+  {
+    group: '💬 Conversa',
+    items: ['Oi, Jarvis!', 'Tudo bem?', 'Quem é você?', 'Você está aí?', 'Tô triste', 'Tô ansioso', 'Tô com preguiça', 'Tô entediado', 'Consegui fechar uma venda!', 'Obrigado!', 'Me chama de chefe'],
+  },
+  {
+    group: '🔥 Motivação e diversão',
+    items: ['Me motiva!', 'Me dá um conselho', 'Conta uma piada', 'Me conta uma curiosidade', 'Homem de Ferro', 'Protocolo festa'],
+  },
+  {
+    group: '🧮 Utilidades',
+    items: ['Que horas são?', 'Que dia é hoje?', 'Quanto é 125 * 4', '15% de 200', 'Quantos dias faltam para o fim do ano?'],
+  },
 ];
 
 /** Markdown bem simples: **negrito** e quebras de linha. */
@@ -39,6 +73,7 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
   const [listening, setListening] = useState(false);
   const [micOk, setMicOk] = useState(false);
   const [voiceError, setVoiceError] = useState('');
+  const [ideasOpen, setIdeasOpen] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const ai = data.settings.aiEnabled && Boolean(data.settings.apiKey);
   const voiceReplies = data.settings.voiceReplies;
@@ -73,7 +108,7 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
     setBusy(true);
 
     if (!ai) {
-      const local = localAnswer(text);
+      const local = localAnswer(text, userName);
       setTimeout(() => {
         reply({ text: local.text, source: 'local' }, byVoice);
         setBusy(false);
@@ -88,7 +123,7 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
       reply({ text: answer.text, source: 'ai', actions: answer.actions.length ? answer.actions : undefined }, byVoice);
     } catch (e) {
       const msg = e instanceof Error && e.name === 'AiError' ? e.message : 'Não consegui falar com a IA agora.';
-      const local = localAnswer(text);
+      const local = localAnswer(text, userName);
       reply({ text: `⚠️ ${msg}\n\nResposta do modo local:\n\n${local.text}`, source: 'local' }, false);
     } finally {
       setBusy(false);
@@ -146,17 +181,22 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
         </div>
       </header>
 
-      {!ai && (
-        <button className="glass ai-banner" onClick={onSettings}>
-          <span className="ai-banner-icon">🧠</span>
-          <span>
-            <strong>Ativar a conversa inteligente</strong>
-            <span className="tiny muted d-block">
-              No modo básico eu só entendo comandos prontos. Com a IA do Claude eu converso sobre qualquer assunto e faço coisas no app por você.
+      {!ai && !data.settings.aiBannerHidden && (
+        <div className="glass ai-banner">
+          <button className="ai-banner-main" onClick={onSettings}>
+            <span className="ai-banner-icon">🧠</span>
+            <span>
+              <strong>Modo básico: grátis e offline</strong>
+              <span className="tiny muted d-block">
+                Entendo dezenas de mensagens prontas (toque em 💡 Ideias). Se um dia quiser conversa livre sobre qualquer assunto, dá para ativar a IA paga em
+                Ajustes.
+              </span>
             </span>
-          </span>
-          <Icon name="right" size={18} />
-        </button>
+          </button>
+          <button className="icon-btn" onClick={() => store.setSettings({ aiBannerHidden: true })} aria-label="Fechar aviso">
+            <Icon name="x" size={16} />
+          </button>
+        </div>
       )}
 
       <div className="chat">
@@ -209,6 +249,9 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
       <div className="chat-dock">
         {voiceError && <p className="small error center">{voiceError}</p>}
         <div className="chips scroll-x">
+          <button className="chip ideas-chip" onClick={() => setIdeasOpen(true)}>
+            💡 Ideias
+          </button>
           {QUICK.map((q) => (
             <button key={q} className="chip" onClick={() => send(q)} disabled={busy}>
               {q}
@@ -234,6 +277,33 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
           )}
         </form>
       </div>
+
+      {ideasOpen && (
+        <Sheet title="O que dá para falar com o JARVIS" onClose={() => setIdeasOpen(false)}>
+          <p className="small muted">
+            Toque numa mensagem para enviar. Tudo isso funciona {ai ? '' : 'de graça, '}mesmo sem a IA. Você também pode escrever do seu jeito ou falar pelo 🎤.
+          </p>
+          {IDEAS.map((g) => (
+            <div key={g.group} className="ideas-group">
+              <h3 className="section-title">{g.group}</h3>
+              <div className="chips wrap">
+                {g.items.map((q) => (
+                  <button
+                    key={q}
+                    className="chip"
+                    onClick={() => {
+                      setIdeasOpen(false);
+                      send(q);
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </Sheet>
+      )}
     </div>
   );
 }
