@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { store, uid, useData } from '../lib/storage';
 import { localAnswer } from '../lib/assistant';
+import { canListen, listen, speak, stopSpeaking } from '../lib/voice';
 import { Icon } from '../components/Icon';
 import { askConfirm } from '../components/Dialog';
 import type { ChatMsg } from '../lib/types';
@@ -31,51 +32,81 @@ function rich(text: string): ReactNode {
   ));
 }
 
-export function Assistant({ onSettings }: { onSettings: () => void }) {
+export function Assistant({ onSettings, userName }: { onSettings: () => void; userName: string }) {
   const data = useData();
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [streaming, setStreaming] = useState<string | null>(null);
+  const [listening, setListening] = useState(false);
+  const [micOk, setMicOk] = useState(false);
+  const [voiceError, setVoiceError] = useState('');
   const endRef = useRef<HTMLDivElement>(null);
   const ai = data.settings.aiEnabled && Boolean(data.settings.apiKey);
+  const voiceReplies = data.settings.voiceReplies;
+
+  useEffect(() => {
+    canListen().then(setMicOk);
+    return () => {
+      stopSpeaking();
+    };
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-  }, [data.chat.length, streaming]);
+  }, [data.chat.length, busy]);
 
   const push = (m: Omit<ChatMsg, 'id' | 'at'>) =>
     store.update((d) => ({ ...d, chat: [...d.chat, { ...m, id: uid(), at: Date.now() }].slice(-200) }));
 
-  const send = async (raw: string) => {
+  const reply = (m: Omit<ChatMsg, 'id' | 'at' | 'role'>, byVoice: boolean) => {
+    push({ role: 'assistant', ...m });
+    // responde falando se a pessoa falou, ou se a voz estiver ligada
+    if (byVoice || store.get().settings.voiceReplies) speak(m.text);
+  };
+
+  const send = async (raw: string, byVoice = false) => {
     const text = raw.trim();
     if (!text || busy) return;
     setInput('');
+    stopSpeaking();
     const history = store.get().chat;
-    push({ role: 'user', text });
+    push({ role: 'user', text, voice: byVoice || undefined });
+    setBusy(true);
 
-    const local = localAnswer(text);
-    if (!ai || local.action) {
-      setBusy(true);
+    if (!ai) {
+      const local = localAnswer(text);
       setTimeout(() => {
-        push({ role: 'assistant', text: local.text, source: 'local' });
+        reply({ text: local.text, source: 'local' }, byVoice);
         setBusy(false);
       }, 350);
       return;
     }
 
-    setBusy(true);
-    setStreaming('');
     try {
       // carrega o SDK do Claude só quando a IA é usada (deixa o app mais leve)
       const { askClaude } = await import('../lib/claude');
-      const answer = await askClaude(store.get(), history, text, (p) => setStreaming(p));
-      push({ role: 'assistant', text: answer, source: 'ai' });
+      const answer = await askClaude(store.get(), userName, history, text);
+      reply({ text: answer.text, source: 'ai', actions: answer.actions.length ? answer.actions : undefined }, byVoice);
     } catch (e) {
       const msg = e instanceof Error && e.name === 'AiError' ? e.message : 'Não consegui falar com a IA agora.';
-      push({ role: 'assistant', text: `⚠️ ${msg}\n\nResposta do modo local:\n\n${local.text}`, source: 'local' });
+      const local = localAnswer(text);
+      reply({ text: `⚠️ ${msg}\n\nResposta do modo local:\n\n${local.text}`, source: 'local' }, false);
     } finally {
-      setStreaming(null);
       setBusy(false);
+    }
+  };
+
+  const talk = async () => {
+    if (busy || listening) return;
+    setVoiceError('');
+    await stopSpeaking();
+    setListening(true);
+    try {
+      const said = await listen();
+      setListening(false);
+      send(said, true);
+    } catch (e) {
+      setListening(false);
+      setVoiceError(e instanceof Error ? e.message : 'Não consegui ouvir.');
     }
   };
 
@@ -83,13 +114,23 @@ export function Assistant({ onSettings }: { onSettings: () => void }) {
     <div className="screen chat-screen">
       <header className="top">
         <div className="row">
-          <div className="jarvis-orb" aria-hidden="true" />
+          <div className={`jarvis-orb ${listening ? 'listening' : ''}`} aria-hidden="true" />
           <div>
             <h1>JARVIS</h1>
-            <p className="muted small">{ai ? '✨ IA (Claude) ativada' : 'Assistente local · grátis e offline'}</p>
+            <p className="muted small">{listening ? '🎙️ Ouvindo…' : ai ? '✨ Conversa inteligente ativada' : 'Modo básico · grátis e offline'}</p>
           </div>
         </div>
         <div className="row">
+          <button
+            className={`icon-btn glass ${voiceReplies ? 'active' : ''}`}
+            aria-label={voiceReplies ? 'Desligar respostas em voz' : 'Ligar respostas em voz'}
+            onClick={() => {
+              if (voiceReplies) stopSpeaking();
+              store.setSettings({ voiceReplies: !voiceReplies });
+            }}
+          >
+            <Icon name={voiceReplies ? 'volume' : 'volumeOff'} size={18} />
+          </button>
           {data.chat.length > 0 && (
             <button
               className="icon-btn glass"
@@ -105,32 +146,68 @@ export function Assistant({ onSettings }: { onSettings: () => void }) {
         </div>
       </header>
 
+      {!ai && (
+        <button className="glass ai-banner" onClick={onSettings}>
+          <span className="ai-banner-icon">🧠</span>
+          <span>
+            <strong>Ativar a conversa inteligente</strong>
+            <span className="tiny muted d-block">
+              No modo básico eu só entendo comandos prontos. Com a IA do Claude eu converso sobre qualquer assunto e faço coisas no app por você.
+            </span>
+          </span>
+          <Icon name="right" size={18} />
+        </button>
+      )}
+
       <div className="chat">
         {data.chat.length === 0 && (
           <div className="chat-hello glass">
             <p>
-              Olá! Eu sou o <strong>JARVIS</strong>. Pergunte sobre sua rotina, seu desempenho ou peça dicas. Também posso registrar coisas: diga
-              "bebi água" ou "fui ao banheiro".
+              Olá{userName ? `, ${userName.split(' ')[0]}` : ''}! Eu sou o <strong>JARVIS</strong>.{' '}
+              {ai
+                ? 'Pode falar comigo sobre qualquer coisa: seus planos, estudos, dinheiro, rotina. Também posso registrar coisas por você, é só dizer "bebi água", "recebi 300 do cliente" ou "anota estudar genética no simulado".'
+                : 'Pergunte sobre sua rotina, seu desempenho ou peça dicas. Também registro coisas: diga "bebi água" ou "fui ao banheiro".'}
             </p>
-            {!ai && <p className="small muted">Quer respostas mais inteligentes e livres? Ative a IA do Claude em Ajustes (precisa de uma chave de API).</p>}
+            {micOk && <p className="small muted">🎤 Toque no microfone para falar comigo por voz.</p>}
           </div>
         )}
         {data.chat.map((m) => (
           <div key={m.id} className={`bubble ${m.role}`}>
+            {m.voice && <span className="bubble-voice">🎤 </span>}
             {rich(m.text)}
-            {m.role === 'assistant' && m.source === 'ai' && <span className="bubble-tag">Claude</span>}
+            {m.actions && (
+              <span className="bubble-actions">
+                {m.actions.map((a, i) => (
+                  <span key={i} className="action-chip">
+                    ✓ {a}
+                  </span>
+                ))}
+              </span>
+            )}
+            {m.role === 'assistant' && (
+              <span className="bubble-foot">
+                {m.source === 'ai' && <span className="bubble-tag">Claude</span>}
+                <button className="bubble-speak" onClick={() => speak(m.text)} aria-label="Ouvir resposta">
+                  <Icon name="volume" size={14} />
+                </button>
+              </span>
+            )}
           </div>
         ))}
-        {streaming !== null && <div className="bubble assistant">{streaming ? rich(streaming) : <span className="typing"><i /><i /><i /></span>}</div>}
-        {busy && streaming === null && (
+        {busy && (
           <div className="bubble assistant">
-            <span className="typing"><i /><i /><i /></span>
+            <span className="typing">
+              <i />
+              <i />
+              <i />
+            </span>
           </div>
         )}
         <div ref={endRef} className="chat-end" />
       </div>
 
       <div className="chat-dock">
+        {voiceError && <p className="small error center">{voiceError}</p>}
         <div className="chips scroll-x">
           {QUICK.map((q) => (
             <button key={q} className="chip" onClick={() => send(q)} disabled={busy}>
@@ -145,10 +222,16 @@ export function Assistant({ onSettings }: { onSettings: () => void }) {
             send(input);
           }}
         >
-          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Pergunte ao JARVIS…" aria-label="Mensagem" />
-          <button className="send-btn" type="submit" disabled={!input.trim() || busy} aria-label="Enviar">
-            <Icon name="send" size={20} />
-          </button>
+          <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={listening ? 'Ouvindo…' : 'Fale ou escreva para o JARVIS…'} aria-label="Mensagem" />
+          {input.trim() || !micOk ? (
+            <button className="send-btn" type="submit" disabled={!input.trim() || busy} aria-label="Enviar">
+              <Icon name="send" size={20} />
+            </button>
+          ) : (
+            <button className={`send-btn mic ${listening ? 'on' : ''}`} type="button" onClick={talk} disabled={busy} aria-label="Falar com o JARVIS">
+              <Icon name="mic" size={20} />
+            </button>
+          )}
         </form>
       </div>
     </div>

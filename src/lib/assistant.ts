@@ -30,7 +30,7 @@ const SYNONYMS: Record<string, string[]> = {
   '🧘': ['medit'],
 };
 
-function matchActivity(data: UserData, text: string): Activity | undefined {
+export function matchActivity(data: UserData, text: string): Activity | undefined {
   const t = ` ${norm(text)} `;
   const active = data.activities.filter((a) => !a.archivedAt);
   let best: { a: Activity; score: number } | undefined;
@@ -126,8 +126,14 @@ const HELP = `Posso te ajudar com coisas como:
 • "Quantos pontos eu tenho?" / "O que falta estudar?"`;
 
 /** Assistente local: funciona offline e de graça, entendendo perguntas comuns. */
-export function localAnswer(text: string): { text: string; understood: boolean; action?: boolean } {
+export function localAnswer(raw: string): { text: string; understood: boolean; action?: boolean } {
   const data = store.get();
+  // "Jarvis, bebi água" → "bebi água" (chamar pelo nome não é um cumprimento)
+  const text = raw.replace(/^\s*((ei|e ai|e aí|oi|olá|ola|fala)[\s,]+)?jarvis\b[\s,!.:;-]*/i, '').trim();
+  if (!text) {
+    const s = dayStats(data, new Date());
+    return { text: `${greeting()}! Às suas ordens. ${s.planned ? `Hoje você já concluiu ${s.completed} de ${s.planned} atividades.` : ''}`.trim(), understood: true };
+  }
   const t = norm(text);
   const act = matchActivity(data, text);
 
@@ -249,7 +255,7 @@ export function localAnswer(text: string): { text: string; understood: boolean; 
 
   if (act) return { text: `${since(data, act)}\n\n${remaining(data, act)}`, understood: true };
 
-  if (has(t, /^(oi|ola|e ai|eai|hey|bom dia|boa tarde|boa noite|jarvis|opa)\b/)) {
+  if (has(t, /^(oi|ola|e ai|eai|hey|bom dia|boa tarde|boa noite|opa|fala)\b/) && t.split(/\s+/).length <= 4) {
     const s = dayStats(data, new Date());
     return {
       text: `${greeting()}! 👋 ${s.planned ? `Hoje você já concluiu ${s.completed} de ${s.planned} atividades.` : 'Você não tem atividades para hoje ainda.'}\n\n${HELP}`,
@@ -259,7 +265,10 @@ export function localAnswer(text: string): { text: string; understood: boolean; 
 
   if (has(t, /(ajuda|o que voce faz|comandos|help)/)) return { text: HELP, understood: true };
 
-  return { text: `Não entendi muito bem. 🤔\n\n${HELP}`, understood: false };
+  return {
+    text: `No modo básico eu só entendo alguns comandos prontos, então não sei responder isso. 🤔\n\nPara conversar comigo sobre **qualquer assunto** (como o JARVIS do Tony Stark), ative a **conversa inteligente** em Ajustes.\n\n${HELP}`,
+    understood: false,
+  };
 }
 
 /** Resumo dos dados para o assistente com IA (Claude). */

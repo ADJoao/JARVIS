@@ -12,6 +12,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey: '',
   model: 'claude-opus-5-5',
   notifications: true,
+  voiceReplies: false,
   discreet: false,
   sleepGoal: 8,
   bedtime: '23:00',

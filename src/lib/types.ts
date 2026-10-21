@@ -140,6 +140,10 @@ export interface ChatMsg {
   text: string;
   at: number;
   source?: 'local' | 'ai';
+  /** O que o assistente fez no app ao responder (ex.: "Registrado: Beber água"). */
+  actions?: string[];
+  /** Mensagem enviada por voz. */
+  voice?: boolean;
 }
 
 export type AiModel = 'claude-opus-5-5' | 'claude-sonnet-5-5' | 'claude-haiku-5-5';
@@ -150,6 +154,8 @@ export interface Settings {
   apiKey: string;
   model: AiModel;
   notifications: boolean;
+  /** O JARVIS lê as respostas em voz alta. */
+  voiceReplies: boolean;
   /** Notificações sem nome/ícone da atividade (privacidade). */
   discreet: boolean;
   /** Meta de sono em horas. */

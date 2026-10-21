@@ -1433,6 +1433,92 @@ textarea.input {
   color: #0b0d1c;
 }
 
+/* ---------- conversa por voz e IA ---------- */
+.steps {
+  margin: 0;
+  padding-left: 22px;
+  display: grid;
+  gap: 6px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.steps strong {
+  color: var(--text);
+}
+.select {
+  user-select: all;
+}
+code {
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.jarvis-orb.listening {
+  animation: listen 1s ease-in-out infinite;
+}
+@keyframes listen {
+  50% {
+    transform: scale(1.18);
+    box-shadow: 0 0 40px rgba(124, 196, 255, 1), inset 0 0 10px rgba(255, 255, 255, 0.6);
+  }
+}
+.send-btn.mic {
+  background: linear-gradient(135deg, #7cc4ff, #5ef2a5);
+}
+.send-btn.mic.on {
+  animation: listen 1s ease-in-out infinite;
+}
+.ai-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  text-align: left;
+  border-color: rgba(178, 140, 255, 0.45);
+}
+.ai-banner-icon {
+  font-size: 28px;
+}
+.bubble-voice {
+  opacity: 0.8;
+}
+.bubble-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.action-chip {
+  font-size: 12px;
+  font-weight: 650;
+  padding: 4px 9px;
+  border-radius: 999px;
+  color: #b6f5d4;
+  background: rgba(107, 227, 166, 0.14);
+  border: 1px solid rgba(107, 227, 166, 0.35);
+}
+.bubble-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 6px;
+}
+.bubble-foot .bubble-tag {
+  margin-top: 0;
+}
+.bubble-speak {
+  margin-left: auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
 /* ---------- ajustes ---------- */
 .profile {
   display: flex;

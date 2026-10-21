@@ -38,6 +38,7 @@ export function Settings({ user, onClose, onLogout }: Props) {
   const s = data.settings;
   const [key, setKey] = useState(s.apiKey);
   const [msg, setMsg] = useState('');
+  const [testing, setTesting] = useState(false);
   const [pw, setPw] = useState({ cur: '', next: '' });
   const fileRef = useRef<HTMLInputElement>(null);
   const activeActs = data.activities.filter((a) => !a.archivedAt);
@@ -165,22 +166,34 @@ export function Settings({ user, onClose, onLogout }: Props) {
       <p className="tiny muted">O recomendado para adultos é de 7 a 9 horas por noite.</p>
 
       <h3 className="section-title">
-        <Icon name="sparkles" size={16} /> Assistente com IA (opcional)
+        <Icon name="sparkles" size={16} /> Conversa inteligente (IA)
       </h3>
       <p className="muted small">
-        O JARVIS já responde perguntas comuns de graça e sem internet. Para conversar livremente, ative o Claude com sua própria chave de API
-        (console.anthropic.com). O uso da API é cobrado pela Anthropic de acordo com o consumo. A chave fica salva só neste aparelho.
+        Sem a IA, o JARVIS só entende comandos prontos. Com a IA do <strong>Claude</strong> ele conversa sobre qualquer assunto, lembra da conversa,
+        conhece seus dados e faz coisas no app por você (registrar água, dinheiro, tarefas, sono…).
       </p>
       <div className="toggle-row">
-        <strong>Usar Claude</strong>
-        <button className={`switch ${s.aiEnabled ? 'on' : ''}`} aria-label="Usar Claude" onClick={() => store.setSettings({ aiEnabled: !s.aiEnabled })} />
+        <strong>Usar a IA do Claude</strong>
+        <button className={`switch ${s.aiEnabled ? 'on' : ''}`} aria-label="Usar a IA do Claude" onClick={() => store.setSettings({ aiEnabled: !s.aiEnabled })} />
       </div>
       {s.aiEnabled && (
         <>
+          <ol className="steps small">
+            <li>
+              Crie uma conta em <strong className="select">console.anthropic.com</strong> (é a empresa que faz o Claude).
+            </li>
+            <li>
+              Em <strong>Billing</strong>, adicione créditos (o mínimo é US$ 5). O uso é cobrado por mensagem, sem mensalidade.
+            </li>
+            <li>
+              Em <strong>API Keys</strong>, toque em <strong>Create Key</strong>, copie a chave (começa com <code>sk-ant-</code>) e cole aqui embaixo.
+            </li>
+          </ol>
           <label className="input-icon">
             <Icon name="key" size={18} />
-            <input className="input" type="password" placeholder="sk-ant-..." value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
+            <input className="input" type="password" placeholder="Cole a chave: sk-ant-..." value={key} onChange={(e) => setKey(e.target.value)} autoComplete="off" />
           </label>
+          <label className="field-label">Modelo</label>
           <div className="segmented vertical">
             {MODEL_OPTIONS.map((m) => (
               <button key={m.id} className={s.model === m.id ? 'on' : ''} onClick={() => store.setSettings({ model: m.id })}>
@@ -189,17 +202,50 @@ export function Settings({ user, onClose, onLogout }: Props) {
               </button>
             ))}
           </div>
-          <button
-            className="btn block"
-            onClick={() => {
-              store.setSettings({ apiKey: key.trim() });
-              flash('Chave salva ✓');
-            }}
-          >
-            Salvar chave
-          </button>
+          <p className="tiny muted">
+            Custo aproximado por mensagem (estimativa; varia com o tamanho da conversa): Opus 5.5 ≈ R$ 0,15 · Sonnet 5.5 ≈ R$ 0,08 · Haiku 5.5 ≈ R$
+            0,005. Ex.: 30 mensagens por dia ≈ R$ 130/mês no Opus, R$ 70/mês no Sonnet ou R$ 5/mês no Haiku. A chave fica salva só neste aparelho.
+          </p>
+          <div className="row-2">
+            <button
+              className="btn"
+              onClick={() => {
+                store.setSettings({ apiKey: key.trim() });
+                flash('Chave salva ✓');
+              }}
+            >
+              Salvar chave
+            </button>
+            <button
+              className="btn primary"
+              disabled={!key.trim() || testing}
+              onClick={async () => {
+                setTesting(true);
+                try {
+                  const { testKey } = await import('../lib/claude');
+                  store.setSettings({ apiKey: key.trim() });
+                  const answer = await testKey(key, s.model);
+                  flash(`✅ Funcionando! JARVIS diz: "${answer.trim().slice(0, 80)}"`);
+                } catch (e) {
+                  flash(`❌ ${e instanceof Error ? e.message : 'Não funcionou.'}`);
+                } finally {
+                  setTesting(false);
+                }
+              }}
+            >
+              {testing ? 'Testando…' : 'Testar'}
+            </button>
+          </div>
         </>
       )}
+
+      <div className="toggle-row">
+        <div>
+          <strong>Responder em voz alta</strong>
+          <p className="muted small">O JARVIS lê as respostas com a voz do celular. Quando você fala com ele pelo microfone, ele sempre responde falando.</p>
+        </div>
+        <button className={`switch ${s.voiceReplies ? 'on' : ''}`} aria-label="Responder em voz alta" onClick={() => store.setSettings({ voiceReplies: !s.voiceReplies })} />
+      </div>
 
       <h3 className="section-title">
         <Icon name="download" size={16} /> Backup

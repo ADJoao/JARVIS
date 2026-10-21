@@ -160,7 +160,7 @@ export default function App() {
         {tab === 'notes' && <Notes openId={noteOpen} onOpen={setNoteOpen} />}
         {tab === 'progress' && <Progress view={progressView} onView={setProgressView} />}
         {tab === 'finance' && <Finance />}
-        {tab === 'assistant' && <Assistant onSettings={openSettings} />}
+        {tab === 'assistant' && <Assistant onSettings={openSettings} userName={user.name} />}
       </main>
 
       <nav className="tabbar glass-strong">
