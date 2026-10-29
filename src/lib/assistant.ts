@@ -1,12 +1,12 @@
 import type { Activity, UserData } from './types';
 import { store } from './storage';
-import { addDays, fmtDuration, fmtTime, greeting, startOfDay, WEEKDAYS_LONG } from './date';
+import { addDays, fmtDuration, fmtMinutes, fmtTime, greeting, startOfDay, WEEKDAYS_LONG } from './date';
 import { dayStats, grade, indexLogs, lastLog, streak, suggestions, weekStats } from './stats';
 import { scheduleLabel } from './catalog';
 import { fallbackReply, smallTalk } from './smalltalk';
 import { balance, financeSummary, goalProgress, money, parseMoney, progressText, randomPhrase } from './finance';
 import { notifyIncome } from './notify';
-import { categoryOf, levelInfo, noteProgress, xpSummary } from './game';
+import { activityDayXp, categoryOf, levelInfo, noteProgress, xpSummary } from './game';
 import { nextTimeFor, timesLabel, timesOf } from './times';
 import { evaluateSleep, fmtHours, hoursOf, lastSleep, sleepSummaryText, sleepTips, sleepWeek } from './sleep';
 
@@ -48,6 +48,25 @@ export function matchActivity(data: UserData, text: string): Activity | undefine
 }
 
 const has = (t: string, re: RegExp) => re.test(t);
+
+const NUM_WORDS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8 };
+
+/** "3 horas", "1h30", "1 hora e meia", "90 min", "meia hora" → minutos (texto já normalizado). */
+export function parseMinutes(t: string): number | undefined {
+  const n = (x: string) => NUM_WORDS[x] ?? Number(x.replace(',', '.'));
+  const num = '\\b(\\d+(?:[.,]\\d+)?|um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito)';
+  let m = t.match(new RegExp(`${num}\\s*(?:h|hr|hrs|hora|horas)\\b(?:\\s*(?:e\\s*)?(meia|\\d+)\\s*(?:min\\w*|m\\b)?)?`));
+  if (m) {
+    const extra = m[2] === 'meia' ? 30 : m[2] ? Number(m[2]) : 0;
+    return Math.round(n(m[1]) * 60 + extra);
+  }
+  m = t.match(/(\d+)h(\d{1,2})\b/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  m = t.match(new RegExp(`${num}\\s*(?:min|mins|minuto|minutos)\\b`));
+  if (m) return Math.round(n(m[1]));
+  if (/\bmeia hora\b/.test(t)) return 30;
+  return undefined;
+}
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 function todaySummary(data: UserData): string {
@@ -232,6 +251,17 @@ export function localAnswer(raw: string, userName = ''): { text: string; underst
     return { text: since(data, act), understood: true };
 
   if (act && has(t, /\b(fiz|bebi|tomei|comi|registr\w*|marc\w*|conclui|terminei|treinei|estudei|li|fui|meditei|dormi|almocei|jantei|corri)\b/)) {
+    if (act.goalKind === 'minutes') {
+      const min = parseMinutes(t);
+      if (!min || min > 16 * 60)
+        return { text: `Quanto tempo de ${act.emoji} ${act.name}? Me diga junto, por exemplo: "${act.name.toLowerCase()} 2 horas" ou "1h30 de ${act.name.toLowerCase()}". Ou toque no + do cartão na tela Hoje.`, understood: true };
+      const before = dayStats(data, new Date()).items.find((i) => i.activity.id === act.id)?.count ?? 0;
+      store.addLog(act.id, Date.now(), min);
+      const total = before + min;
+      const gain = activityDayXp(data.game, act, total) - activityDayXp(data.game, act, before);
+      const over = total > act.goal ? ` Passou da meta de ${fmtMinutes(act.goal)}: bônus de pontos! 🔥` : total >= act.goal ? ' Meta batida! ✅' : ` Faltam ${fmtMinutes(act.goal - total)} para a meta.`;
+      return { text: `Registrado! ${act.emoji} ${act.name}: **${fmtMinutes(min)}**. Hoje: ${fmtMinutes(total)} de ${fmtMinutes(act.goal)}.${over} (+${gain} XP)`, understood: true, action: true };
+    }
     store.addLog(act.id);
     const after = store.get();
     const it = dayStats(after, new Date()).items.find((i) => i.activity.id === act.id);
@@ -297,7 +327,7 @@ export function contextForAi(data: UserData): string {
         icone: a.emoji,
         agenda: scheduleLabel(a.schedule),
         horarios: timesOf(a),
-        meta_por_dia: `${a.goal}${a.unit ? ` ${a.unit}` : ''}`,
+        meta_por_dia: a.goalKind === 'minutes' ? `${fmtMinutes(a.goal)} (meta de TEMPO: registrar com minutos)` : `${a.goal}${a.unit ? ` ${a.unit}` : ''}`,
         alerta_horas_sem_registro: a.alertHours ?? null,
         ultimo_registro: last ? `${new Date(last.at).toLocaleString('pt-BR')} (há ${fmtDuration(now.getTime() - last.at)})` : 'nunca',
         notas: a.notes ?? null,

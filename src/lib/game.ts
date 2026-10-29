@@ -57,6 +57,19 @@ const EMOJI_CATEGORY: Record<string, CategoryId> = {
 /** Tipo da atividade: o escolhido, ou deduzido pelo ícone. */
 export const activityCategory = (a: Pick<Activity, 'category' | 'emoji'>): CategoryId => a.category ?? EMOJI_CATEGORY[a.emoji] ?? 'outro';
 
+/** Passar da meta em vezes: cada vez extra vale esta fração do XP (até o dobro da meta). */
+export const EXTRA_RATE = 0.5;
+/** Meta em tempo: o XP do dia é proporcional ao tempo feito, até este múltiplo. */
+export const MAX_TIME_MULTIPLIER = 3;
+
+/** XP que uma atividade rende num dia, dado o quanto foi feito (vezes ou minutos). Usado para mostrar a prévia. */
+export function activityDayXp(g: Game, a: Activity, amount: number): number {
+  const xp = g.xp[activityCategory(a)];
+  const goal = Math.max(1, a.goal);
+  if (a.goalKind === 'minutes') return Math.round(xp * Math.min(amount / goal, MAX_TIME_MULTIPLIER));
+  return Math.min(amount, goal) * xp + Math.round(Math.min(Math.max(0, amount - goal), goal) * xp * EXTRA_RATE);
+}
+
 /** XP de cada quadradinho marcado numa nota (metade do valor do tipo, mínimo 2). */
 export const checkXp = (g: Game, cat: CategoryId) => Math.max(2, Math.round(g.xp[cat] / 2));
 /** Bônus ao completar todos os quadradinhos de uma nota, ou ao passar numa prova. */
@@ -83,18 +96,30 @@ export function xpSummary(data: UserData): XpSummary {
   const g = data.game;
   const by = Object.fromEntries(CATEGORIES.map((c) => [c.id, 0])) as Record<CategoryId, number>;
 
-  // atividades: cada registro vale o XP do tipo, até a meta do dia
-  const perDay = new Map<string, number>();
+  // atividades
+  // - meta em vezes: cada registro vale o XP do tipo até a meta; passou da meta, +50% por vez extra (até o dobro da meta)
+  // - meta em tempo: XP proporcional ao tempo feito no dia (2h de meta e 3h feitas = 1,5x), até 3x
+  const perDay = new Map<string, { a: Activity; n: number; minutes: number }>();
   const acts = new Map(data.activities.map((a) => [a.id, a]));
   for (const l of data.logs) {
     const a = acts.get(l.activityId);
     if (!a) continue;
     const k = `${a.id}|${dayKey(l.at)}`;
-    const n = (perDay.get(k) ?? 0) + 1;
-    perDay.set(k, n);
-    if (n > Math.max(1, a.goal)) continue;
+    const cur = perDay.get(k) ?? { a, n: 0, minutes: 0 };
+    cur.n += 1;
+    cur.minutes += l.minutes ?? 0;
+    perDay.set(k, cur);
+  }
+  for (const { a, n, minutes } of perDay.values()) {
     const cat = activityCategory(a);
-    by[cat] += g.xp[cat];
+    const goal = Math.max(1, a.goal);
+    if (a.goalKind === 'minutes') {
+      by[cat] += Math.round(g.xp[cat] * Math.min(minutes / goal, MAX_TIME_MULTIPLIER));
+    } else {
+      const within = Math.min(n, goal);
+      const extra = Math.min(Math.max(0, n - goal), goal);
+      by[cat] += within * g.xp[cat] + Math.round(extra * g.xp[cat] * EXTRA_RATE);
+    }
   }
 
   // notas: cada quadradinho + bônus por nota completa e por prova aprovada

@@ -1,7 +1,8 @@
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 import type { DayItem } from '../lib/stats';
 import { store } from '../lib/storage';
-import { fmtTime, sameDay } from '../lib/date';
+import { fmtMinutes, fmtTime, sameDay } from '../lib/date';
+import { DurationPicker } from './DurationPicker';
 import type { LogEntry } from '../lib/types';
 import { Icon } from './Icon';
 import { nextTimeFor, timesOf } from '../lib/times';
@@ -27,13 +28,16 @@ export function ActivityCard({ item, date, logs, onEdit }: Props) {
   const pct = Math.min(count / goal, 1);
   const last = logs.length ? logs.reduce((m, l) => (l.at > m.at ? l : m)) : undefined;
 
+  const byTime = a.goalKind === 'minutes';
+  const [picking, setPicking] = useState(false);
   const add = () => {
+    if (byTime) return setPicking(true);
     store.addLog(a.id, logTimeFor(date));
     navigator.vibrate?.(15);
   };
   const undo = () => last && store.removeLog(last.id);
 
-  const single = goal === 1;
+  const single = goal === 1 && !byTime;
   const times = timesOf(a);
   const next = nextTimeFor(a, count);
   return (
@@ -52,7 +56,8 @@ export function ActivityCard({ item, date, logs, onEdit }: Props) {
           )}
           {!single && (
             <span>
-              {count}/{goal} {a.unit ?? ''}
+              {byTime ? `${fmtMinutes(count)} / ${fmtMinutes(goal)}` : `${count}/${goal} ${a.unit ?? ''}`}
+              {count > goal && ' 🔥'}
             </span>
           )}
           {!item.scheduled && <span>livre</span>}
@@ -75,6 +80,7 @@ export function ActivityCard({ item, date, logs, onEdit }: Props) {
           </button>
         )}
       </div>
+      {picking && <DurationPicker activity={a} doneToday={count} at={logTimeFor(date)} onClose={() => setPicking(false)} />}
     </div>
   );
 }

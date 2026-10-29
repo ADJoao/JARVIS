@@ -127,6 +127,25 @@ export function incomeByDay(f: Finance, days: number): { date: Date; total: numb
   });
 }
 
+/** Saldo no fim de cada dia dos últimos `days` dias (inclui hoje), para o gráfico de linha. */
+export function balanceByDay(f: Finance, days: number): { date: Date; balance: number; change: number }[] {
+  const today = startOfDay(new Date());
+  const first = addDays(today, -days + 1).getTime();
+  const sorted = [...f.txs].sort((a, b) => a.at - b.at);
+  let bal = sorted.filter((t) => t.at < first).reduce((s, t) => s + signed(t), 0);
+  const perDay = new Map<string, number>();
+  for (const t of sorted) if (t.at >= first) perDay.set(dayKey(t.at), (perDay.get(dayKey(t.at)) ?? 0) + signed(t));
+  return Array.from({ length: days }, (_, i) => {
+    const date = addDays(today, i - days + 1);
+    const change = perDay.get(dayKey(date)) ?? 0;
+    bal += change;
+    return { date, balance: bal, change };
+  });
+}
+
+/** Soma do que está previsto para entrar. */
+export const expectedTotal = (f: Finance) => (f.expected ?? []).reduce((s, e) => s + e.amount, 0);
+
 /** Resumo em texto para o assistente local. */
 export function financeSummary(data: UserData): string {
   const f = data.finance;

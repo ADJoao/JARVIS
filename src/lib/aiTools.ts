@@ -6,6 +6,7 @@ import { balance, money } from './finance';
 import { notifyIncome } from './notify';
 import { CATEGORIES } from './game';
 import { dayStats } from './stats';
+import { fmtMinutes } from './date';
 import { evaluateSleep, fmtHours, hoursOf } from './sleep';
 import { COLORS } from './catalog';
 
@@ -20,6 +21,7 @@ export const AI_TOOLS: Anthropic.Beta.BetaTool[] = [
       properties: {
         atividade: { type: 'string', description: 'Nome ou descrição da atividade, ex.: "beber água", "remédio"' },
         quantidade: { type: 'integer', description: 'Quantas vezes registrar (ex.: 2 copos de água). Padrão 1.' },
+        minutos: { type: 'integer', description: 'Para atividades com meta de TEMPO (ex.: estudou 3 horas → 180). Obrigatório nesses casos.' },
       },
       required: ['atividade'],
     },
@@ -83,6 +85,16 @@ export function runTool(name: string, input: Record<string, unknown>): { result:
     case 'registrar_atividade': {
       const a = matchActivity(data, str(input.atividade));
       if (!a) return { result: `Nenhuma atividade parecida com "${str(input.atividade)}" na rotina. Atividades existentes: ${data.activities.filter((x) => !x.archivedAt).map((x) => x.name).join(', ') || 'nenhuma'}.`, error: true };
+      if (a.goalKind === 'minutes') {
+        const min = Math.round(Number(input.minutos));
+        if (!(min > 0 && min <= 16 * 60)) return { result: `"${a.name}" tem meta de tempo (${fmtMinutes(a.goal)} por dia). Pergunte quanto tempo o usuário fez e envie em "minutos".`, error: true };
+        store.addLog(a.id, Date.now(), min);
+        const total = dayStats(store.get(), new Date()).items.find((i) => i.activity.id === a.id)?.count ?? min;
+        return {
+          result: `Registrado ${fmtMinutes(min)} de "${a.name}". Hoje: ${fmtMinutes(total)} de ${fmtMinutes(a.goal)}${total > a.goal ? ' (passou da meta: ganha pontos extras, até 3x)' : ''}.`,
+          summary: `${a.emoji} ${a.name} · ${fmtMinutes(min)}`,
+        };
+      }
       const n = Math.max(1, Math.min(20, Math.round(Number(input.quantidade) || 1)));
       for (let i = 0; i < n; i++) store.addLog(a.id);
       const it = dayStats(store.get(), new Date()).items.find((i) => i.activity.id === a.id);

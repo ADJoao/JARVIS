@@ -5,6 +5,9 @@ import { canListen, listen, speak, stopSpeaking } from '../lib/voice';
 import { Icon } from '../components/Icon';
 import { askConfirm } from '../components/Dialog';
 import { Sheet } from '../components/Sheet';
+import { ActivityQuickForm, ExpectedForm, ExpenseForm, IncomeForm, NoteQuickForm, ReminderForm } from '../components/GuidedForms';
+import { SleepEditor } from '../components/SleepEditor';
+import { evaluateSleep, fmtHours, hoursOf } from '../lib/sleep';
 import type { ChatMsg } from '../lib/types';
 
 const QUICK = [
@@ -18,6 +21,18 @@ const QUICK = [
   'Como está meu sono?',
 ];
 
+/** Ações com caixinhas: em vez de frases fixas, você escolhe valores e opções. */
+const ACTIONS = [
+  { id: 'activity', label: '✅ Registrar o que eu fiz' },
+  { id: 'income', label: '💰 Recebi dinheiro' },
+  { id: 'expense', label: '💸 Gastei dinheiro' },
+  { id: 'expected', label: '🚀 Vou vender / vou receber' },
+  { id: 'reminder', label: '⏰ Criar lembrete' },
+  { id: 'note', label: '🗒️ Anotar algo' },
+  { id: 'sleep', label: '😴 Esqueci de marcar o sono' },
+] as const;
+type ActionId = (typeof ACTIONS)[number]['id'];
+
 /** Mensagens prontas do botão "Ideias" (todas funcionam no modo básico, grátis). */
 const IDEAS: { group: string; items: string[] }[] = [
   {
@@ -30,11 +45,11 @@ const IDEAS: { group: string; items: string[] }[] = [
   },
   {
     group: '💰 Dinheiro',
-    items: ['Quanto eu tenho?', 'Como está minha meta?', 'Recebi 500 do cliente', 'Gastei 30 no lanche', 'Vou vender um site e acho que lucro 1000', 'Dica de dinheiro'],
+    items: ['Quanto eu tenho?', 'Como está minha meta?', 'Quanto entrou essa semana?', 'Dica de dinheiro'],
   },
   {
-    group: '📝 Notas e lembretes',
-    items: ['O que falta estudar?', 'Anota comprar pão', 'Me lembra de ligar pro João às 15h', 'Me lembra de estudar amanhã às 19h', 'Dica de estudo'],
+    group: '📝 Notas e estudos',
+    items: ['O que falta estudar?', 'Dica de estudo'],
   },
   {
     group: '😴 Sono e saúde',
@@ -42,7 +57,7 @@ const IDEAS: { group: string; items: string[] }[] = [
   },
   {
     group: '💬 Conversa',
-    items: ['Oi, Jarvis!', 'Tudo bem?', 'Quem é você?', 'Você está aí?', 'Tô triste', 'Tô ansioso', 'Tô com preguiça', 'Tô entediado', 'Consegui fechar uma venda!', 'Obrigado!', 'Me chama de chefe'],
+    items: ['Oi, Jarvis!', 'Tudo bem?', 'Quem é você?', 'Você está aí?', 'Tô triste', 'Tô ansioso', 'Tô com preguiça', 'Tô entediado', 'Consegui fechar uma venda!', 'Obrigado!'],
   },
   {
     group: '🔥 Motivação e diversão',
@@ -50,7 +65,7 @@ const IDEAS: { group: string; items: string[] }[] = [
   },
   {
     group: '🧮 Utilidades',
-    items: ['Que horas são?', 'Que dia é hoje?', 'Quanto é 125 * 4', '15% de 200', 'Quantos dias faltam para o fim do ano?'],
+    items: ['Que horas são?', 'Que dia é hoje?', 'Quantos dias faltam para o fim do ano?'],
   },
 ];
 
@@ -74,6 +89,7 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
   const [micOk, setMicOk] = useState(false);
   const [voiceError, setVoiceError] = useState('');
   const [ideasOpen, setIdeasOpen] = useState(false);
+  const [form, setForm] = useState<ActionId | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const ai = data.settings.aiEnabled && Boolean(data.settings.apiKey);
   const voiceReplies = data.settings.voiceReplies;
@@ -128,6 +144,12 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
     } finally {
       setBusy(false);
     }
+  };
+
+  /** Um formulário de caixinhas terminou: mostra no chat como se fosse uma conversa. */
+  const formDone = (said: string, answer: string) => {
+    push({ role: 'user', text: said });
+    reply({ text: answer, source: 'local' }, false);
   };
 
   const talk = async () => {
@@ -280,8 +302,24 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
 
       {ideasOpen && (
         <Sheet title="O que dá para falar com o JARVIS" onClose={() => setIdeasOpen(false)}>
+          <h3 className="section-title">⚡ Ações rápidas</h3>
+          <p className="tiny muted">Escolha nas caixinhas (valor, horário, nome…) e eu salvo para você.</p>
+          <div className="chips wrap">
+            {ACTIONS.map((a) => (
+              <button
+                key={a.id}
+                className="chip action-idea"
+                onClick={() => {
+                  setIdeasOpen(false);
+                  setForm(a.id);
+                }}
+              >
+                {a.label}
+              </button>
+            ))}
+          </div>
           <p className="small muted">
-            Toque numa mensagem para enviar. Tudo isso funciona {ai ? '' : 'de graça, '}mesmo sem a IA. Você também pode escrever do seu jeito ou falar pelo 🎤.
+            Ou toque numa pergunta para enviar. Tudo isso funciona {ai ? '' : 'de graça, '}mesmo sem a IA. Você também pode escrever do seu jeito ou falar pelo 🎤.
           </p>
           {IDEAS.map((g) => (
             <div key={g.group} className="ideas-group">
@@ -303,6 +341,25 @@ export function Assistant({ onSettings, userName }: { onSettings: () => void; us
             </div>
           ))}
         </Sheet>
+      )}
+      {form === 'activity' && <ActivityQuickForm onClose={() => setForm(null)} onDone={formDone} />}
+      {form === 'income' && <IncomeForm onClose={() => setForm(null)} onDone={formDone} />}
+      {form === 'expense' && <ExpenseForm onClose={() => setForm(null)} onDone={formDone} />}
+      {form === 'expected' && <ExpectedForm onClose={() => setForm(null)} onDone={formDone} />}
+      {form === 'reminder' && <ReminderForm onClose={() => setForm(null)} onDone={formDone} />}
+      {form === 'note' && <NoteQuickForm onClose={() => setForm(null)} onDone={formDone} />}
+      {form === 'sleep' && (
+        <SleepEditor
+          title="😴 Lançar uma noite"
+          onClose={() => setForm(null)}
+          onSaved={(id) => {
+            const e = store.get().sleep.find((x) => x.id === id);
+            if (!e) return;
+            const h = hoursOf(e);
+            const ev = evaluateSleep(h, store.get().settings.sleepGoal);
+            formDone('Esqueci de marcar meu sono', `Lancei sua noite: **${fmtHours(h)}** de sono. ${ev.emoji} ${ev.label}.`);
+          }}
+        />
       )}
     </div>
   );

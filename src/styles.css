@@ -170,6 +170,11 @@ h2 {
   grid-template-columns: minmax(0, 1fr);
   gap: 16px;
 }
+
+/* espaço para o último cartão não ficar embaixo do botão + flutuante */
+.screen.with-fab {
+  padding-bottom: calc(190px + var(--safe-bottom));
+}
 .fade-in {
   animation: fade 0.35s ease;
 }
@@ -2482,6 +2487,136 @@ code {
   font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.02em;
+}
+
+/* ---------- gráfico de linha do saldo ---------- */
+.line-chart {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+.line-chart .grid {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-dasharray: 3 4;
+}
+.line-chart .zero {
+  stroke: rgba(255, 107, 129, 0.5);
+  stroke-dasharray: 4 3;
+}
+.line-chart .axis {
+  fill: var(--muted);
+  font-size: 10.5px;
+  font-family: inherit;
+}
+.line-chart .axis.strong {
+  fill: var(--text);
+  font-weight: 700;
+}
+.line-chart .line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px rgba(124, 196, 255, 0.55));
+}
+.line-chart .cursor {
+  stroke: rgba(255, 255, 255, 0.25);
+  stroke-width: 1;
+}
+.line-chart .dot {
+  stroke: #0b0d1c;
+  stroke-width: 2;
+}
+.line-chart .dot.flat {
+  fill: var(--accent);
+}
+.line-chart .dot.up {
+  fill: var(--money);
+}
+.line-chart .dot.down {
+  fill: var(--bad);
+}
+.line-chart .dot.on {
+  stroke: #fff;
+}
+.up {
+  color: var(--money);
+}
+.down {
+  color: #ff9aaa;
+}
+.dot-legend {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-legend.up {
+  background: var(--money);
+}
+.dot-legend.down {
+  background: var(--bad);
+}
+
+/* ---------- previsto para entrar ---------- */
+.expected-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.expected-row .tx-main .small {
+  white-space: normal;
+}
+.receive-btn {
+  padding: 7px 12px;
+  font-size: 13px;
+  border-radius: 12px;
+}
+
+/* ---------- ajustes de sono ---------- */
+.sleep-link {
+  position: relative;
+  justify-self: start;
+  margin-left: 0;
+}
+.sleep-links {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.sleep-links .link-btn {
+  margin-left: 0;
+}
+button.sleep-row {
+  width: 100%;
+  text-align: left;
+  color: var(--muted);
+  padding: 4px 0;
+}
+button.sleep-row .small {
+  color: var(--text);
+}
+.warn-box {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: rgba(255, 200, 87, 0.12);
+  border: 1px solid rgba(255, 200, 87, 0.4);
+  color: #ffe4a8;
+  line-height: 1.45;
+}
+.sleep-preview {
+  padding: 12px 14px;
+  border-radius: 16px;
+  display: grid;
+  gap: 4px;
+}
+.sleep-preview.bad {
+  border-color: rgba(255, 107, 129, 0.5);
+  color: #ffb3bf;
 }
 
 /* ---------- central de notificações ---------- */

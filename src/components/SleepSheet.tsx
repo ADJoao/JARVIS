@@ -1,13 +1,12 @@
 import { useMemo, useState, type CSSProperties } from 'react';
 import { store, useData } from '../lib/storage';
 import { evaluateSleep, fmtHours, hoursOf, sleepTips, sleepWeek } from '../lib/sleep';
-import { addDays, dayKey, fmtDayMonth, fmtTime, fromKey, startOfDay, WEEKDAYS_LONG, WEEKDAYS_SHORT } from '../lib/date';
+import { addDays, dayKey, fmtDayMonth, fmtTime, startOfDay, WEEKDAYS_LONG, WEEKDAYS_SHORT } from '../lib/date';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
-import { askConfirm } from './Dialog';
+import { QUALITY, QUALITY_LABEL, SleepEditor } from './SleepEditor';
+import type { SleepEntry } from '../lib/types';
 
-export const QUALITY = ['😫', '😕', '😐', '🙂', '🤩'];
-const QUALITY_LABEL = ['Péssimo', 'Ruim', 'Normal', 'Bem', 'Ótimo'];
 const MAX_H = 12;
 
 interface Props {
@@ -21,9 +20,7 @@ export function SleepSheet({ onClose, rateId }: Props) {
   const goal = data.settings.sleepGoal;
   const [offset, setOffset] = useState(0);
   const [sel, setSel] = useState<number | null>(null);
-  const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ date: dayKey(new Date()), bed: data.settings.bedtime || '23:00', wake: '07:00', quality: 0 });
-  const [error, setError] = useState('');
+  const [editing, setEditing] = useState<{ entry?: SleepEntry } | null>(null);
 
   const refKey = addDays(startOfDay(new Date()), offset * 7).getTime();
   const w = useMemo(() => sleepWeek(data, new Date(refKey)), [data, refKey]);
@@ -34,24 +31,6 @@ export function SleepSheet({ onClose, rateId }: Props) {
   const selIdx = sel ?? (todayIdx >= 0 && w.nights[todayIdx].hours > 0 ? todayIdx : lastRecorded >= 0 ? 6 - lastRecorded : 0);
   const selNight = w.nights[selIdx];
   const history = [...data.sleep].sort((a, b) => b.end - a.end).slice(0, 10);
-
-  const addManual = () => {
-    setError('');
-    const wakeDay = fromKey(form.date);
-    const [wh, wm] = form.wake.split(':').map(Number);
-    const [bh, bm] = form.bed.split(':').map(Number);
-    const end = new Date(wakeDay);
-    end.setHours(wh, wm, 0, 0);
-    const start = new Date(wakeDay);
-    start.setHours(bh, bm, 0, 0);
-    if (start >= end) start.setDate(start.getDate() - 1); // dormiu no dia anterior
-    if (end.getTime() > Date.now() + 60_000) return setError('O horário de acordar ainda não chegou.');
-    const ok = store.addSleep(start.getTime(), end.getTime(), form.quality || undefined);
-    if (!ok) return setError('Confira os horários: máximo de 20 horas e sem sobrepor outra noite já registrada.');
-    setAdding(false);
-    setSel(null);
-    setOffset(0);
-  };
 
   return (
     <Sheet title="Sono" onClose={onClose}>
@@ -166,53 +145,19 @@ export function SleepSheet({ onClose, rateId }: Props) {
         ))}
       </section>
 
-      {adding ? (
-        <section className="glass list-card">
-          <strong>Adicionar noite</strong>
-          <label className="field-label">Dia em que acordou</label>
-          <input type="date" className="input" value={form.date} max={dayKey(new Date())} onChange={(e) => e.target.value && setForm({ ...form, date: e.target.value })} />
-          <div className="row-2">
-            <div>
-              <label className="field-label">Dormiu às</label>
-              <input type="time" className="input" value={form.bed} onChange={(e) => e.target.value && setForm({ ...form, bed: e.target.value })} />
-            </div>
-            <div>
-              <label className="field-label">Acordou às</label>
-              <input type="time" className="input" value={form.wake} onChange={(e) => e.target.value && setForm({ ...form, wake: e.target.value })} />
-            </div>
-          </div>
-          <label className="field-label">Como acordou (opcional)</label>
-          <div className="quality-row">
-            {QUALITY.map((q, i) => (
-              <button key={q} className={`quality ${form.quality === i + 1 ? 'on' : ''}`} onClick={() => setForm({ ...form, quality: form.quality === i + 1 ? 0 : i + 1 })} aria-label={QUALITY_LABEL[i]}>
-                <span>{q}</span>
-              </button>
-            ))}
-          </div>
-          {error && <p className="error">{error}</p>}
-          <div className="row-2">
-            <button className="btn ghost" onClick={() => setAdding(false)}>
-              Cancelar
-            </button>
-            <button className="btn primary" onClick={addManual}>
-              <Icon name="check" size={18} /> Salvar
-            </button>
-          </div>
-        </section>
-      ) : (
-        <button className="btn block" onClick={() => setAdding(true)}>
-          <Icon name="plus" size={18} /> Adicionar noite manualmente
-        </button>
-      )}
+      <button className="btn block" onClick={() => setEditing({})}>
+        <Icon name="plus" size={18} /> Esqueci de marcar: lançar uma noite
+      </button>
 
       {history.length > 0 && (
         <section className="glass list-card">
           <strong>Últimas noites</strong>
+          <span className="tiny muted">Toque numa noite para ajustar os horários ou apagar.</span>
           {history.map((e) => {
             const h = hoursOf(e);
             const v = evaluateSleep(h, goal);
             return (
-              <div key={e.id} className="sleep-row">
+              <button key={e.id} className="sleep-row" onClick={() => setEditing({ entry: e })}>
                 <div className="sleep-row-main">
                   <span className="small">
                     {WEEKDAYS_SHORT[new Date(e.end).getDay()]} {fmtDayMonth(new Date(e.end))} · {fmtTime(e.start)} → {fmtTime(e.end)}
@@ -223,14 +168,13 @@ export function SleepSheet({ onClose, rateId }: Props) {
                   </span>
                 </div>
                 <span className={`badge small-badge tone-${v.tone}`}>{v.emoji}</span>
-                <button className="icon-btn" aria-label="Apagar noite" onClick={async () => (await askConfirm('Apagar esse registro de sono?', { confirmLabel: 'Apagar', danger: true })) && store.removeSleep(e.id)}>
-                  <Icon name="trash" size={16} />
-                </button>
-              </div>
+                <Icon name="edit" size={16} />
+              </button>
             );
           })}
         </section>
       )}
+      {editing && <SleepEditor entry={editing.entry} onClose={() => setEditing(null)} />}
     </Sheet>
   );
 }

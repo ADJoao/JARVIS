@@ -57,11 +57,14 @@ export interface DayStats {
   score: number;
 }
 
+/** Quanto um registro conta para a meta: 1 vez, ou os minutos (meta em tempo). */
+export const logAmount = (a: Activity, l: LogEntry) => (a.goalKind === 'minutes' ? (l.minutes ?? 0) : 1);
+
 export function dayStats(data: UserData, date: Date, idx = indexLogs(data.logs)): DayStats {
   const items: DayItem[] = [];
   for (const a of data.activities) {
     const scheduled = isScheduledOn(a, date);
-    const count = logsOn(idx, a.id, date).length;
+    const count = logsOn(idx, a.id, date).reduce((s, l) => s + logAmount(a, l), 0);
     // atividades "sem agenda" só aparecem no dia se houve registro
     if (!scheduled && !(a.schedule.kind === 'free' && isActiveOn(a, date))) continue;
     items.push({ activity: a, count, goal: a.goal, complete: count >= a.goal, scheduled });

@@ -76,7 +76,7 @@ function parseTime(t: string): string | undefined {
 }
 
 /** Cria/usa a nota "Anotações rápidas" e adiciona uma tarefa. */
-function quickNote(text: string): string {
+export function quickNote(text: string): string {
   const notes = store.get().notes;
   const title = 'Anotações rápidas';
   const existing = notes.find((n) => n.title === title);
@@ -87,7 +87,7 @@ function quickNote(text: string): string {
 }
 
 /** Lembrete: cria uma nota com aviso no dia/horário. */
-function reminder(what: string, date: Date, time?: string) {
+export function reminder(what: string, date: Date, time?: string) {
   store.saveNote({
     id: uid(),
     title: what.charAt(0).toUpperCase() + what.slice(1),

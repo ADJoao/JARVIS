@@ -84,3 +84,12 @@ export function timeToMinutes(t?: string): number {
   const [h, m] = t.split(':').map(Number);
   return h * 60 + m;
 }
+
+/** 45 → "45 min", 90 → "1h 30min", 120 → "2h". */
+export function fmtMinutes(min: number): string {
+  const m = Math.round(min);
+  if (m < 60) return `${m} min`;
+  const h = Math.floor(m / 60);
+  const r = m % 60;
+  return r ? `${h}h ${r}min` : `${h}h`;
+}

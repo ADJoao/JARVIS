@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties } from 'react';
 import { store, useData } from '../lib/storage';
 import {
   balance,
+  expectedTotal,
   goalProgress,
   incomeBetween,
   incomeByDay,
@@ -20,7 +21,9 @@ import { Icon } from '../components/Icon';
 import { Sheet } from '../components/Sheet';
 import { askConfirm } from '../components/Dialog';
 import { FinanceSettings } from '../components/FinanceSettings';
-import type { MoneyTx } from '../lib/types';
+import type { ExpectedIncome, MoneyTx } from '../lib/types';
+import { BalanceChart } from '../components/BalanceChart';
+import { ExpectedForm } from '../components/GuidedForms';
 
 type Mode = 'in' | 'out' | 'adjust';
 
@@ -31,6 +34,13 @@ export function Finance() {
   const [sheet, setSheet] = useState<Mode | null>(null);
   const [settings, setSettings] = useState(false);
   const [celebrate, setCelebrate] = useState<{ tx: MoneyTx; phrase: string } | null>(null);
+  const [expectedOpen, setExpectedOpen] = useState(false);
+  const [receiving, setReceiving] = useState<ExpectedIncome | null>(null);
+  const expected = f.expected ?? [];
+  const celebrateIncome = (tx: MoneyTx) => {
+    setCelebrate({ tx, phrase: randomPhrase(store.get().finance) });
+    notifyIncome(store.get(), tx);
+  };
   const [range, setRange] = useState<7 | 30>(7);
   const [sel, setSel] = useState<number | null>(null);
 
@@ -141,6 +151,44 @@ export function Finance() {
         )}
       </section>
 
+      <section className="glass list-card">
+        <div className="chart-head">
+          <strong>💼 Previsto para entrar</strong>
+          <button className="btn ghost small-btn" onClick={() => setExpectedOpen(true)}>
+            <Icon name="plus" size={14} /> Previsão
+          </button>
+        </div>
+        {expected.length === 0 ? (
+          <p className="small muted">Vai vender algo ou tem dinheiro para receber? Anote aqui e marque "Recebi" quando o dinheiro cair.</p>
+        ) : (
+          <>
+            {expected.map((e) => (
+              <div key={e.id} className="expected-row">
+                <span className="tx-icon in">💼</span>
+                <span className="tx-main">
+                  <span className="small">{e.name}</span>
+                  <span className="tiny muted">{e.label ?? (hide ? 'R$ ••••' : money(e.amount))}</span>
+                </span>
+                <button className="btn money-in receive-btn" onClick={() => setReceiving(e)}>
+                  ✓ Recebi
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label="Remover previsão"
+                  onClick={async () => (await askConfirm(`Remover "${e.name}" das previsões?`, { confirmLabel: 'Remover', danger: true })) && store.removeExpected(e.id)}
+                >
+                  <Icon name="x" size={16} />
+                </button>
+              </div>
+            ))}
+            <p className="tiny muted">
+              Total previsto: {hide ? 'R$ ••••' : money(expectedTotal(f))}
+              {p && !hide ? ` · se tudo entrar, sua meta vai para ${Math.floor(((p.current + expectedTotal(f)) / p.goal) * 100)}%` : ''}
+            </p>
+          </>
+        )}
+      </section>
+
       <section className="glass chart-card">
         <div className="chart-head">
           <strong>Faturamento</strong>
@@ -178,6 +226,8 @@ export function Finance() {
           ))}
         </div>
       </section>
+
+      <BalanceChart f={f} hide={hide} />
 
       <section className="glass list-card">
         <strong>Movimentações</strong>
@@ -217,13 +267,21 @@ export function Finance() {
           mode={sheet}
           current={bal}
           onClose={() => setSheet(null)}
-          onIncome={(tx) => {
-            setCelebrate({ tx, phrase: randomPhrase(store.get().finance) });
-            notifyIncome(store.get(), tx);
-          }}
+          onIncome={celebrateIncome}
         />
       )}
       {settings && <FinanceSettings onClose={() => setSettings(false)} />}
+      {expectedOpen && <ExpectedForm onClose={() => setExpectedOpen(false)} />}
+      {receiving && (
+        <ReceiveSheet
+          item={receiving}
+          onClose={() => setReceiving(null)}
+          onDone={(tx) => {
+            setReceiving(null);
+            celebrateIncome(tx);
+          }}
+        />
+      )}
       {celebrate && <Celebration tx={celebrate.tx} phrase={celebrate.phrase} onClose={() => setCelebrate(null)} />}
     </div>
   );
@@ -331,5 +389,30 @@ function Celebration({ tx, phrase, onClose }: { tx: MoneyTx; phrase: string; onC
         </button>
       </div>
     </div>
+  );
+}
+
+/** O dinheiro previsto entrou: confirma o valor real (pode ser diferente do previsto). */
+function ReceiveSheet({ item, onClose, onDone }: { item: ExpectedIncome; onClose: () => void; onDone: (tx: MoneyTx) => void }) {
+  const [text, setText] = useState(moneyInput(item.amount));
+  const cents = parseMoney(text);
+  return (
+    <Sheet title={`Recebi: ${item.name}`} onClose={onClose}>
+      <p className="small muted">Quanto entrou de verdade?{item.label ? ` (previsto: ${item.label})` : ''}</p>
+      <label className="money-input in">
+        <span>R$</span>
+        <input inputMode="decimal" value={text} autoFocus onChange={(e) => setText(e.target.value.replace(/[^\d.,]/g, ''))} aria-label="Valor recebido" />
+      </label>
+      <button
+        className="btn money-in block"
+        disabled={!Number.isFinite(cents) || cents <= 0}
+        onClick={() => {
+          const tx = store.receiveExpected(item.id, cents);
+          if (tx) onDone(tx);
+        }}
+      >
+        <Icon name="check" size={18} /> Registrar entrada de {Number.isFinite(cents) && cents > 0 ? money(cents) : '…'}
+      </button>
+    </Sheet>
   );
 }

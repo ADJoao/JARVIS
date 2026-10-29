@@ -17,8 +17,10 @@ export interface Activity {
   time?: string;
   /** Todos os horários do dia, em ordem (ex.: remédio 06:20, 14:20, 22:20). Inclui `time`. */
   times?: string[];
-  /** Quantas vezes por dia conta como "feito" (ex.: 8 copos de água). */
+  /** Meta do dia: quantas vezes (ex.: 8 copos de água) ou, se goalKind = 'minutes', quantos minutos (ex.: 120 de estudo). */
   goal: number;
+  /** "times" (padrão) = meta em vezes; "minutes" = meta em tempo. */
+  goalKind?: 'times' | 'minutes';
   unit?: string;
   /** Mostrar alerta se passar X horas sem registrar (ex.: banheiro). */
   alertHours?: number;
@@ -36,6 +38,8 @@ export interface LogEntry {
   id: string;
   activityId: string;
   at: number;
+  /** Duração registrada (só em atividades com meta em tempo). */
+  minutes?: number;
 }
 
 export interface SleepEntry {
@@ -58,8 +62,20 @@ export interface MoneyTx {
   at: number;
 }
 
+/** Dinheiro previsto para entrar (ex.: "vou vender um site, acima de R$ 1.000"). */
+export interface ExpectedIncome {
+  id: string;
+  name: string;
+  /** Valor em centavos (para faixas, o mínimo da faixa). */
+  amount: number;
+  /** Texto da faixa escolhida, ex.: "acima de R$ 1.000". */
+  label?: string;
+  createdAt: number;
+}
+
 export interface Finance {
   txs: MoneyTx[];
+  expected?: ExpectedIncome[];
   /** Meta em centavos (0 = sem meta). */
   goal: number;
   goalName: string;

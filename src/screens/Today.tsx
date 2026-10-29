@@ -54,7 +54,7 @@ export function Today({ userName, onEdit, onSettings, onSleep, onLogs, onCalenda
   const first = userName.split(' ')[0];
 
   return (
-    <div className="screen">
+    <div className="screen with-fab">
       <header className="top">
         <div>
           <p className="muted small cap">{fmtLongDate(selected)}</p>

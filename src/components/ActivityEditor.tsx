@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import type { Activity, Schedule } from '../lib/types';
 import { COLORS, EMOJI_GROUPS, TEMPLATES, fromTemplate } from '../lib/catalog';
-import { dayKey, fmtDuration, fromKey, WEEKDAYS_SHORT } from '../lib/date';
+import { dayKey, fmtDuration, fmtMinutes, fromKey, WEEKDAYS_SHORT } from '../lib/date';
 import { lastLog } from '../lib/stats';
 import { CATEGORIES, activityCategory } from '../lib/game';
 import { everyHours, normalizeTimes, timesLabel, timesOf } from '../lib/times';
@@ -33,13 +33,14 @@ export function ActivityEditor({ activity, onClose }: Props) {
   const [error, setError] = useState('');
   const set = (patch: Partial<Activity>) => setA((x) => ({ ...x, ...patch }));
   const game = useData().game;
+  const byTime = a.goalKind === 'minutes';
   // horários do dia; a meta acompanha a quantidade de horários (dá para ajustar depois)
   const times = timesOf(a);
   const setTimes = (next: string[], tidy = true) => {
     const list = tidy ? normalizeTimes(next) : next;
     setA((x) => {
       const prev = timesOf(x).length;
-      const goal = x.goal === prev || x.goal < list.length ? Math.max(1, list.length) : x.goal;
+      const goal = x.goalKind === 'minutes' ? x.goal : x.goal === prev || x.goal < list.length ? Math.max(1, list.length) : x.goal;
       const turnedOn = !prev && list.length ? { reminder: true } : {};
       return { ...x, ...turnedOn, time: list[0], times: list.length ? list : undefined, goal, reminder: list.length ? (turnedOn.reminder ?? x.reminder) : false };
     });
@@ -188,8 +189,9 @@ export function ActivityEditor({ activity, onClose }: Props) {
         ))}
       </div>
       <p className="tiny muted">
-        Cada vez que você registrar ganha +{game.xp[activityCategory(a)]} XP
-        {a.goal > 1 ? ` (até ${a.goal}x por dia = ${game.xp[activityCategory(a)] * a.goal} XP)` : ''}.
+        {byTime
+          ? `Bater a meta de ${fmtMinutes(a.goal)} vale +${game.xp[activityCategory(a)]} XP; fazendo mais tempo, ganha proporcionalmente mais (até 3x).`
+          : `Cada vez que você registrar ganha +${game.xp[activityCategory(a)]} XP${a.goal > 1 ? ` (meta de ${a.goal}x por dia = ${game.xp[activityCategory(a)] * a.goal} XP)` : ''}. Passou da meta? +50% por vez extra.`}
       </p>
 
       <label className="field-label">Quando</label>
@@ -272,21 +274,51 @@ export function ActivityEditor({ activity, onClose }: Props) {
           </p>
 
           <label className="field-label">Meta por dia</label>
-          <div className="stepper">
-            <button onClick={() => set({ goal: Math.max(1, a.goal - 1) })} aria-label="Menos">
-              <Icon name="minus" size={18} />
+          <div className="segmented compact">
+            <button className={!byTime ? 'on' : ''} onClick={() => set({ goalKind: 'times', goal: Math.max(1, timesOf(a).length || 1) })}>
+              🔁 Vezes
             </button>
-            <span>
-              {a.goal} {a.goal === 1 ? 'vez' : 'vezes'}
-            </span>
-            <button onClick={() => set({ goal: Math.min(50, a.goal + 1) })} aria-label="Mais">
-              <Icon name="plus" size={18} />
+            <button className={byTime ? 'on' : ''} onClick={() => set({ goalKind: 'minutes', goal: 60, unit: undefined })}>
+              ⏱️ Tempo
             </button>
           </div>
+          {byTime ? (
+            <>
+              <div className="stepper">
+                <button onClick={() => set({ goal: Math.max(5, a.goal - 15) })} aria-label="Menos 15 minutos">
+                  <Icon name="minus" size={18} />
+                </button>
+                <span>{fmtMinutes(a.goal)}</span>
+                <button onClick={() => set({ goal: Math.min(24 * 60, a.goal + 15) })} aria-label="Mais 15 minutos">
+                  <Icon name="plus" size={18} />
+                </button>
+              </div>
+              <div className="chips wrap">
+                {[30, 60, 90, 120, 180, 240].map((m) => (
+                  <button key={m} className={`chip ${a.goal === m ? 'on' : ''}`} onClick={() => set({ goal: m })}>
+                    {fmtMinutes(m)}
+                  </button>
+                ))}
+              </div>
+              <p className="tiny muted">Ao registrar, você diz quanto tempo fez. Passou da meta? Ganha mais pontos (ex.: meta de 2h e fez 3h = 1,5x o XP).</p>
+            </>
+          ) : (
+            <div className="stepper">
+              <button onClick={() => set({ goal: Math.max(1, a.goal - 1) })} aria-label="Menos">
+                <Icon name="minus" size={18} />
+              </button>
+              <span>
+                {a.goal} {a.goal === 1 ? 'vez' : 'vezes'}
+              </span>
+              <button onClick={() => set({ goal: Math.min(50, a.goal + 1) })} aria-label="Mais">
+                <Icon name="plus" size={18} />
+              </button>
+            </div>
+          )}
         </>
       )}
 
-      {kind !== 'free' && a.goal > 1 && (
+      {kind !== 'free' && !byTime && a.goal > 1 && (
         <input className="input" placeholder="Unidade (ex.: copos, páginas, km)" value={a.unit ?? ''} maxLength={16} onChange={(e) => set({ unit: e.target.value || undefined })} />
       )}
 

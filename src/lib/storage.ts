@@ -127,8 +127,8 @@ class Store {
     }));
   }
 
-  addLog(activityId: string, at = Date.now()): LogEntry {
-    const log = { id: uid(), activityId, at };
+  addLog(activityId: string, at = Date.now(), minutes?: number): LogEntry {
+    const log: LogEntry = minutes ? { id: uid(), activityId, at, minutes } : { id: uid(), activityId, at };
     this.update((d) => ({ ...d, logs: [...d.logs, log] }));
     return log;
   }
@@ -147,9 +147,17 @@ class Store {
   }
 
   /** Registra uma noite de sono (e encerra o "Vou dormir" em andamento). */
+  /** Motivo para não aceitar uma noite (ou undefined se estiver ok). */
+  sleepProblem(start: number, end: number, ignoreId?: string): string | undefined {
+    if (end <= start) return 'O horário de acordar precisa ser depois do de dormir.';
+    if (end - start > 20 * 3600_000) return 'Mais de 20 horas de sono? Confira os horários.';
+    if (end > Date.now() + 60_000) return 'O horário de acordar ainda não chegou.';
+    if (this.data.sleep.some((s) => s.id !== ignoreId && start < s.end && end > s.start)) return 'Esse horário se sobrepõe a outra noite já registrada.';
+    return undefined;
+  }
+
   addSleep(start: number, end: number, quality?: number): SleepEntry | undefined {
-    if (end <= start || end - start > 20 * 3600_000) return undefined;
-    if (this.data.sleep.some((s) => start < s.end && end > s.start)) return undefined; // sobreposição
+    if (this.sleepProblem(start, end)) return undefined;
     const entry = { id: uid(), start, end, quality };
     this.update((d) => ({
       ...d,
@@ -157,6 +165,16 @@ class Store {
       sleep: [...d.sleep, entry].sort((a, b) => a.start - b.start),
     }));
     return entry;
+  }
+
+  /** Corrige os horários de uma noite já registrada. */
+  replaceSleep(id: string, start: number, end: number, quality?: number): boolean {
+    if (this.sleepProblem(start, end, id)) return false;
+    this.update((d) => ({
+      ...d,
+      sleep: d.sleep.map((s) => (s.id === id ? { ...s, start, end, quality } : s)).sort((a, b) => a.start - b.start),
+    }));
+    return true;
   }
 
   updateSleep(id: string, patch: Partial<SleepEntry>) {
@@ -182,6 +200,24 @@ class Store {
 
   removeTx(id: string) {
     this.update((d) => ({ ...d, finance: { ...d.finance, txs: d.finance.txs.filter((t) => t.id !== id) } }));
+  }
+
+  addExpected(name: string, amount: number, label?: string) {
+    const e = { id: uid(), name: name.trim() || 'Venda', amount, label, createdAt: Date.now() };
+    this.update((d) => ({ ...d, finance: { ...d.finance, expected: [...(d.finance.expected ?? []), e] } }));
+    return e;
+  }
+
+  removeExpected(id: string) {
+    this.update((d) => ({ ...d, finance: { ...d.finance, expected: (d.finance.expected ?? []).filter((e) => e.id !== id) } }));
+  }
+
+  /** O dinheiro previsto entrou: vira uma entrada de verdade (com o valor real) e sai da lista. */
+  receiveExpected(id: string, amount: number): MoneyTx | undefined {
+    const e = (this.data.finance.expected ?? []).find((x) => x.id === id);
+    if (!e) return undefined;
+    this.removeExpected(id);
+    return this.addTx('in', amount, e.name);
   }
 
   setFinance(patch: Partial<Finance>) {
