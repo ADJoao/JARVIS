@@ -5,6 +5,7 @@ import { dayKey, fmtDayMonth, fmtDuration, fmtTime, fromKey, WEEKDAYS_SHORT } fr
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
 import { askConfirm } from './Dialog';
+import { ActivityHistory } from './ActivityHistory';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -16,7 +17,10 @@ export function LogSheet({ activityId, onClose }: { activityId: string; onClose:
   const [date, setDate] = useState(dayKey(now));
   const [time, setTime] = useState(`${pad(now.getHours())}:${pad(now.getMinutes())}`);
   const [msg, setMsg] = useState('');
+  const [history, setHistory] = useState(false);
   if (!a) return null;
+  // o histórico ocupa o lugar deste painel (dois painéis de vidro empilhados deixam o texto de trás aparecendo)
+  if (history) return <ActivityHistory activityId={a.id} onClose={() => setHistory(false)} />;
 
   const last = lastLog(data, a.id);
   const logs = data.logs.filter((l) => l.activityId === a.id).sort((x, y) => y.at - x.at).slice(0, 12);
@@ -55,6 +59,10 @@ export function LogSheet({ activityId, onClose }: { activityId: string; onClose:
           </>
         )}
       </div>
+
+      <button className="btn block" onClick={() => setHistory(true)}>
+        <Icon name="calendar" size={18} /> Ver histórico do mês
+      </button>
 
       <button
         className="btn primary block"

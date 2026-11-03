@@ -2717,3 +2717,25 @@ button.sleep-row .small {
     transition: none !important;
   }
 }
+
+/* ---------- histórico do mês de uma atividade ---------- */
+.hist-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.hist-stats > div {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 2px;
+  padding: 12px 6px;
+  border-radius: 16px;
+}
+.hist-stats strong {
+  font-size: 22px;
+}
+.hist-notes {
+  display: grid;
+  gap: 4px;
+}
