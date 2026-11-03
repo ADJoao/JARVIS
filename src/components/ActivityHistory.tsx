@@ -1,7 +1,7 @@
 import { useState, type CSSProperties } from 'react';
 import { useData } from '../lib/storage';
 import { isNative } from '../lib/notify';
-import { addDays, dayKey, fmtDayMonth, fmtDuration, fmtTime, MONTHS, sameDay, startOfWeek, WEEKDAYS_SHORT } from '../lib/date';
+import { addDays, dayKey, fullDate, fmtDayMonth, fmtDuration, fmtTime, MONTHS, sameDay, startOfWeek, WEEKDAYS_SHORT } from '../lib/date';
 import { Sheet } from './Sheet';
 import { Icon } from './Icon';
 
@@ -158,6 +158,11 @@ export function ActivityHistory({ activityId, onClose }: { activityId: string; o
           </span>
         )}
         {!logs.length && <span className="muted">Nenhum registro neste mês.</span>}
+        {all[0] && (
+          <span>
+            Primeiro registro: <strong>{fullDate(all[0].at)}</strong> às {fmtTime(all[0].at)}
+          </span>
+        )}
       </div>
 
       {logs.length > 0 && (

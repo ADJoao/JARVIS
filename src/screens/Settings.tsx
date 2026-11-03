@@ -8,6 +8,7 @@ import { Icon } from '../components/Icon';
 import { askConfirm } from '../components/Dialog';
 import { fmtHours } from '../lib/sleep';
 import { timesOf } from '../lib/times';
+import { fmtTime, fullDate } from '../lib/date';
 import type { UserAccount } from '../lib/types';
 
 interface Props {
@@ -38,6 +39,7 @@ export function Settings({ user, onClose, onLogout }: Props) {
   const s = data.settings;
   const [key, setKey] = useState(s.apiKey);
   const [msg, setMsg] = useState('');
+  const firstLog = data.logs.reduce<(typeof data.logs)[number] | undefined>((min, l) => (!min || l.at < min.at ? l : min), undefined);
   const [testing, setTesting] = useState(false);
   const [pw, setPw] = useState({ cur: '', next: '' });
   const fileRef = useRef<HTMLInputElement>(null);
@@ -56,6 +58,10 @@ export function Settings({ user, onClose, onLogout }: Props) {
           <strong>{user.name}</strong>
           <p className="tiny muted">
             {data.activities.length} atividades · {data.logs.length} registros
+          </p>
+          <p className="tiny muted">
+            Conta criada em {fullDate(user.createdAt)}
+            {firstLog && ` · primeiro registro em ${fullDate(firstLog.at)} às ${fmtTime(firstLog.at)}`}
           </p>
         </div>
       </div>

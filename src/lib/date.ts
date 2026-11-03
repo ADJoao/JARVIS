@@ -93,3 +93,9 @@ export function fmtMinutes(min: number): string {
   const r = m % 60;
   return r ? `${h}h ${r}min` : `${h}h`;
 }
+
+/** 20 de outubro de 2026 */
+export function fullDate(ts: number): string {
+  const d = new Date(ts);
+  return `${d.getDate()} de ${MONTHS[d.getMonth()]} de ${d.getFullYear()}`;
+}
